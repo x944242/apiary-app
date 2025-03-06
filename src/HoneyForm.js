@@ -18,7 +18,7 @@ function HoneyForm({ onHoneySaved }) {
     e.preventDefault();
     try {
       // Find the most recent inspection for this apiary and hiveNumber before this date
-      const response = await axios.get('http://localhost:3001/inspections');
+      const response = await axios.get('http://localhost:3001/hive_inspections');
       const inspections = response.data;
       const targetInspection = inspections
         .filter(i => i.apiary === formData.apiary && i.hiveNumber === Number(formData.hiveNumber) && new Date(i.date) <= new Date(formData.date))
@@ -31,7 +31,7 @@ function HoneyForm({ onHoneySaved }) {
 
       // Update the inspection with honeyYield
       const updatedInspection = { ...targetInspection, honeyYield: formData.honeyYield };
-      await axios.put(`http://localhost:3001/inspections/${targetInspection.id}`, updatedInspection);
+      await axios.put(`http://localhost:3001/hive_inspections/${targetInspection.id}`, updatedInspection);
       alert('Honey yield saved successfully!');
       setFormData({
         apiary: 'ratho',

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 
-function InspectionForm({ onInspectionSaved, selectedApiary, selectedHive }) {
+function InspectionForm({ onInspectionSaved, selectedApiary, selectedHive, hives }) {
   const [formData, setFormData] = useState({
     date: new Date().toISOString().split('T')[0],
     queenStatus: '',
@@ -18,7 +18,7 @@ function InspectionForm({ onInspectionSaved, selectedApiary, selectedHive }) {
   useEffect(() => {
     const fetchPreviousActions = async () => {
       try {
-        const response = await axios.get('http://localhost:3001/inspections');
+        const response = await axios.get('http://localhost:3001/hive_inspections');
         const latestInspection = response.data
           .filter((i) => i.apiary === selectedApiary && i.hiveNumber === selectedHive?.hiveNumber)
           .sort((a, b) => new Date(b.date) - new Date(a.date))[0];
@@ -70,19 +70,38 @@ function InspectionForm({ onInspectionSaved, selectedApiary, selectedHive }) {
     });
   };
 
+  
+
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const hiveNumber = selectedHive?.hiveNumber;
+
+
+    // 🛑 Prevent submission if no hive is selected
+    if (!selectedHive || !selectedHive.hive_number) {
+      alert("❌ Error: You must select a hive before submitting an inspection.");
+      return; // 🚫 Stop submission
+    }
+    // ✅ Get the selected hive's ID
+    const hive_id = selectedHive?.id;  // ✅ Make sure we use `id`, not `hive_number`
     const hiveName = selectedHive?.name || '';
+
+    // ✅ Debugging: Check what is available before submitting
+    console.log("📌 Available Hives:", hives);
+    console.log("📌 Selected Hive:", selectedHive);
+    console.log("📌 Hive ID (hive_id):", hive_id);
+
+    // ✅ Define `followUpActionsText` BEFORE using it
     const allActions = [
-      ...previousActions.filter((a) => !a.checked),
-      ...formData.actions.filter((a) => !a.checked && a.text.trim()),
+        ...previousActions.filter((a) => !a.checked),
+        ...formData.actions.filter((a) => !a.checked && a.text.trim())
     ];
-    const followUpActionsText = allActions.length > 0 ? allActions.map((a, i) => `${i + 1}. ${a.text}`).join('\n') : null;
-    try {
-      const response = await axios.post('http://localhost:3001/inspections', {
+    const followUpActionsText = allActions.length > 0 
+        ? allActions.map((a, i) => `${i + 1}. ${a.text}`).join('\n') 
+        : null;
+
+    console.log("📤 Sending payload:", JSON.stringify({
         apiary: selectedApiary,
-        hiveNumber,
+        hive_id,  // ✅ Use selectedHive's `id` from database
         hiveName,
         date: formData.date,
         queenStatus: formData.queenStatus || null,
@@ -92,25 +111,67 @@ function InspectionForm({ onInspectionSaved, selectedApiary, selectedHive }) {
         broodPattern: formData.broodPattern || null,
         notes: formData.notes || null,
         followUpActions: followUpActionsText,
-      });
-      console.log('Inspection saved:', response.data);
-      alert('Inspection saved successfully!');
-      setFormData({
-        date: new Date().toISOString().split('T')[0],
-        queenStatus: '',
-        foodStores: '',
-        temperature: '',
-        rain: '',
-        broodPattern: '',
-        notes: '',
-        actions: [],
-      });
-      if (onInspectionSaved) onInspectionSaved();
+    }, null, 2));
+
+    // 🔹 EXTRA LOGGING TO FIND THE PROBLEM
+    console.log("🔍 DEBUGGING SUBMISSION:");
+    console.log("➡️ Selected Apiary:", selectedApiary);
+    console.log("➡️ Hive ID (hive_id):", hive_id);
+    console.log("➡️ Hive Name:", hiveName);
+    console.log("➡️ Date:", formData.date);
+    console.log("➡️ Queen Status:", formData.queenStatus);
+    console.log("➡️ Food Stores:", formData.foodStores);
+    console.log("➡️ Temperature:", formData.temperature);
+    console.log("➡️ Rain:", formData.rain);
+    console.log("➡️ Brood Pattern:", formData.broodPattern);
+    console.log("➡️ Notes:", formData.notes);
+    console.log("➡️ Follow-Up Actions:", followUpActionsText);
+
+    try {
+        console.log("📤 Sending payload to backend...");
+
+        const response = await axios.post('http://localhost:3001/hive_inspections', {
+            apiary: selectedApiary,
+            hive_id,  // ✅ Use the correct hive ID
+            hiveName,
+            date: formData.date,
+            queenStatus: formData.queenStatus || null,
+            foodStores: formData.foodStores || null,
+            temperature: formData.temperature || null,
+            rain: formData.rain || null,
+            broodPattern: formData.broodPattern || null,
+            notes: formData.notes || null,
+            followUpActions: followUpActionsText,
+        });
+
+        console.log('✅ Inspection saved successfully:', response.data);
+        alert('Inspection saved successfully!');
+
+        // ✅ Reset form data
+        setFormData({
+            date: new Date().toISOString().split('T')[0],
+            queenStatus: '',
+            foodStores: '',
+            temperature: '',
+            rain: '',
+            broodPattern: '',
+            notes: '',
+            actions: [],
+        });
+
+        if (onInspectionSaved) onInspectionSaved();
     } catch (err) {
-      console.error('Error saving inspection:', err);
-      alert('Failed to save inspection');
+        console.error('❌ Error saving inspection:', err.response ? err.response.data : err);
+        alert('Failed to save inspection');
     }
-  };
+};
+
+
+
+  
+  console.log("Selected Hive in InspectionForm:", selectedHive);
+  console.log("selectedHive in InspectionForm:", selectedHive);
+
 
   return (
     <div>
