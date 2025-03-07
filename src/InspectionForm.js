@@ -16,7 +16,6 @@ function InspectionForm({ onInspectionSaved, selectedApiary, selectedHive, hives
   const [previousActions, setPreviousActions] = useState([]);
   const [latestInspection, setLatestInspection] = useState(null);
 
-
   useEffect(() => {
     const fetchPreviousActions = async () => {
       try {
@@ -26,17 +25,28 @@ function InspectionForm({ onInspectionSaved, selectedApiary, selectedHive, hives
           .sort((a, b) => new Date(b.date) - new Date(a.date))[0];
   
         if (latestInspectionData) {
-          setLatestInspection(latestInspectionData); // ✅ Store latest inspection data
           const actionsArray = latestInspectionData.followUpActions
             ? latestInspectionData.followUpActions
                 .split('\n')
                 .filter((line) => line.trim())
-                .map((text, index) => ({ id: index + 1, text, checked: false }))
+                .map((text, index) => ({
+                  id: index + 1,
+                  text,
+                  checked: false,
+                }))
             : [];
+  
           setPreviousActions(actionsArray);
+          setFormData((prevForm) => ({
+            ...prevForm,
+            actions: actionsArray,
+          }));
         } else {
-          setLatestInspection(null); // ✅ Reset latest inspection if no data
           setPreviousActions([]);
+          setFormData((prevForm) => ({
+            ...prevForm,
+            actions: [],
+          }));
         }
       } catch (err) {
         console.error('Error fetching previous actions:', err);
@@ -46,7 +56,7 @@ function InspectionForm({ onInspectionSaved, selectedApiary, selectedHive, hives
     if (selectedHive) {
       fetchPreviousActions();
     }
-  }, [selectedHive, selectedApiary]); // ✅ Depend on `selectedApiary` and `selectedHive`
+  }, [selectedHive, selectedApiary]);
   
 
   const handleChange = (e) => {
@@ -54,67 +64,76 @@ function InspectionForm({ onInspectionSaved, selectedApiary, selectedHive, hives
     setFormData({ ...formData, [name]: value });
   };
 
-  const handleActionChange = (index, field, value) => {
-    const updatedActions = [...formData.actions];
-    updatedActions[index] = { ...updatedActions[index], [field]: value };
-    if (field === 'checked' && value) {
-      updatedActions.splice(index, 1);
-    }
-    setFormData({ ...formData, actions: updatedActions });
-  };
+ const handleActionChange = (index, field, value) => {
+  const updatedActions = [...formData.actions];
+  updatedActions[index] = { ...updatedActions[index], [field]: value };
+  setFormData({ ...formData, actions: updatedActions });
+};
+
 
   const handlePreviousActionChange = (index, checked) => {
     const updatedPreviousActions = [...previousActions];
     updatedPreviousActions[index] = { ...updatedPreviousActions[index], checked };
-    setPreviousActions(updatedPreviousActions);
+  
+    // ✅ Remove checked actions only when explicitly marked
+    setPreviousActions(updatedPreviousActions.filter(action => !action.checked));
   };
-
+  
   const addAction = () => {
     const newActionId = formData.actions.length
       ? Math.max(...formData.actions.map((a) => a.id)) + 1
-      : previousActions.length
-      ? Math.max(...previousActions.map((a) => a.id)) + 1
       : 1;
-    setFormData({
-      ...formData,
-      actions: [...formData.actions, { id: newActionId, text: '', checked: false }],
-    });
+  
+    setFormData((prevForm) => ({
+      ...prevForm,
+      actions: [
+        ...prevForm.actions, // ✅ Preserve existing actions
+        { id: newActionId, text: '', checked: false },
+      ],
+    }));
   };
+  
 
   
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-
-
-    // 🛑 Prevent submission if no hive is selected
+  
     if (!selectedHive || !selectedHive.hive_number) {
       alert("❌ Error: You must select a hive before submitting an inspection.");
-      return; // 🚫 Stop submission
+      return;
     }
-    // ✅ Get the selected hive's ID
-    const hive_id = selectedHive?.id;  // ✅ Make sure we use `id`, not `hive_number`
-    const hiveName = selectedHive?.name || '';
-
-    // ✅ Debugging: Check what is available before submitting
-    console.log("📌 Available Hives:", hives);
-    console.log("📌 Selected Hive:", selectedHive);
-    console.log("📌 Hive ID (hive_id):", hive_id);
-
-    // ✅ Define `followUpActionsText` BEFORE using it
-    const allActions = [
-      ...previousActions.filter((a) => !a.checked),
-      ...formData.actions.filter((a) => !a.checked && a.text.trim())
-  ];
   
-  const followUpActionsText = allActions.length > 0 
-      ? allActions.map((a, i) => `${i + 1}. ${a.text}`).join('\n')  // Format actions as list
+    const hive_id = selectedHive?.id;
+    const hiveName = selectedHive?.name || '';
+  
+    // ✅ Ensure previous unchecked + new unchecked actions persist
+    const allActions = [
+      ...formData.actions.filter((a) => !a.checked && a.text.trim()), // ✅ Keep unchecked actions
+    ];
+  
+    const followUpActionsText = allActions.length > 0 
+      ? allActions.map((a, i) => `${i + 1}. ${a.text}`).join('\n') 
       : null;
   
-
     console.log("📤 Sending payload:", JSON.stringify({
+      apiary: selectedApiary,
+      hive_id,
+      hiveName,
+      date: formData.date,
+      queenStatus: formData.queenStatus || null,
+      foodStores: formData.foodStores || null,
+      temperature: formData.temperature || null,
+      rain: formData.rain || null,
+      broodPattern: formData.broodPattern || null,
+      notes: formData.notes || null,
+      followUpActions: followUpActionsText,
+    }, null, 2));
+  
+    try {
+      const response = await axios.post('http://localhost:3001/hive_inspections', {
         apiary: selectedApiary,
-        hive_id,  // ✅ Use selectedHive's `id` from database
+        hive_id,
         hiveName,
         date: formData.date,
         queenStatus: formData.queenStatus || null,
@@ -124,60 +143,24 @@ function InspectionForm({ onInspectionSaved, selectedApiary, selectedHive, hives
         broodPattern: formData.broodPattern || null,
         notes: formData.notes || null,
         followUpActions: followUpActionsText,
-    }, null, 2));
-
-    // 🔹 EXTRA LOGGING TO FIND THE PROBLEM
-    console.log("🔍 DEBUGGING SUBMISSION:");
-    console.log("➡️ Selected Apiary:", selectedApiary);
-    console.log("➡️ Hive ID (hive_id):", hive_id);
-    console.log("➡️ Hive Name:", hiveName);
-    console.log("➡️ Date:", formData.date);
-    console.log("➡️ Queen Status:", formData.queenStatus);
-    console.log("➡️ Food Stores:", formData.foodStores);
-    console.log("➡️ Temperature:", formData.temperature);
-    console.log("➡️ Rain:", formData.rain);
-    console.log("➡️ Brood Pattern:", formData.broodPattern);
-    console.log("➡️ Notes:", formData.notes);
-    console.log("➡️ Follow-Up Actions:", followUpActionsText);
-
-    try {
-        console.log("📤 Sending payload to backend...");
-
-        const response = await axios.post('http://localhost:3001/hive_inspections', {
-            apiary: selectedApiary,
-            hive_id,  // ✅ Use the correct hive ID
-            hiveName,
-            date: formData.date,
-            queenStatus: formData.queenStatus || null,
-            foodStores: formData.foodStores || null,
-            temperature: formData.temperature || null,
-            rain: formData.rain || null,
-            broodPattern: formData.broodPattern || null,
-            notes: formData.notes || null,
-            followUpActions: followUpActionsText,
-        });
-
-        console.log('✅ Inspection saved successfully:', response.data);
-        alert('Inspection saved successfully!');
-
-        // ✅ Reset form data
-        setFormData({
-            date: new Date().toISOString().split('T')[0],
-            queenStatus: '',
-            foodStores: '',
-            temperature: '',
-            rain: '',
-            broodPattern: '',
-            notes: '',
-            actions: [],
-        });
-
-        if (onInspectionSaved) onInspectionSaved();
+      });
+  
+      console.log('✅ Inspection saved successfully:', response.data);
+      alert('Inspection saved successfully!');
+  
+      // ✅ Preserve unchecked actions after submission
+      setFormData((prevForm) => ({
+        ...prevForm,
+        actions: allActions, // ✅ Only unchecked actions persist
+      }));
+  
+      if (onInspectionSaved) onInspectionSaved();
     } catch (err) {
-        console.error('❌ Error saving inspection:', err.response ? err.response.data : err);
-        alert('Failed to save inspection');
+      console.error('❌ Error saving inspection:', err.response ? err.response.data : err);
+      alert('Failed to save inspection');
     }
-};
+  };
+  
 
 
 
@@ -283,51 +266,39 @@ function InspectionForm({ onInspectionSaved, selectedApiary, selectedHive, hives
             className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-amber-400 min-h-[100px] placeholder-gray-400"
           />
         </div>
+  
         <div className="md:col-span-2">
-          <label className="block text-sm font-medium text-gray-600 mb-1">Actions</label>
-          <div className="space-y-2">
-            {previousActions.map((action, index) => (
-              <div key={action.id} className="flex items-center">
-                <input
-                  type="checkbox"
-                  checked={action.checked}
-                  onChange={(e) => handlePreviousActionChange(index, e.target.checked)}
-                  className="mr-2"
-                />
-                <input
-                  type="text"
-                  value={action.text}
-                  className="w-full p-2 border border-gray-300 rounded-md bg-gray-100"
-                  disabled
-                />
-              </div>
-            ))}
-            {formData.actions.map((action, index) => (
-              <div key={action.id} className="flex items-center">
-                <input
-                  type="checkbox"
-                  checked={action.checked}
-                  onChange={(e) => handleActionChange(index, 'checked', e.target.checked)}
-                  className="mr-2"
-                />
-                <input
-                  type="text"
-                  value={action.text}
-                  onChange={(e) => handleActionChange(index, 'text', e.target.value)}
-                  className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-amber-400"
-                  placeholder={`${action.id}. Enter action`}
-                />
-              </div>
-            ))}
-            <button
-              type="button"
-              onClick={addAction}
-              className="mt-2 p-2 bg-green-500 text-white rounded-md hover:bg-green-600"
-            >
-              Add Action
-            </button>
-          </div>
-        </div>
+  <label className="block text-sm font-medium text-gray-600 mb-1">Actions</label>
+  <div className="space-y-2">
+    {formData.actions.map((action, index) => (
+      <div key={action.id} className="flex items-center">
+        <input
+          type="checkbox"
+          checked={action.checked}
+          onChange={(e) => handleActionChange(index, 'checked', e.target.checked)}
+          className="mr-2"
+        />
+        <input
+          type="text"
+          value={action.text}
+          onChange={(e) => handleActionChange(index, 'text', e.target.value)}
+          className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-amber-400"
+          placeholder="Enter action"
+        />
+      </div>
+    ))}
+    <button
+      type="button"
+      onClick={addAction}
+      className="mt-2 p-2 bg-green-500 text-white rounded-md hover:bg-green-600"
+    >
+      Add Action
+    </button>
+  </div>
+</div>
+
+
+
         <button
           type="submit"
           className="md:col-span-2 w-full p-3 bg-amber-500 text-white rounded-md hover:bg-amber-600 transition-colors duration-200 font-medium"

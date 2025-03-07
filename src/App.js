@@ -19,7 +19,7 @@ function App() {
   const [hives, setHives] = useState([]);
   const [apiaries, setApiaries] = useState([]);
   const [activeTab, setActiveTab] = useState('inspection-dashboard');
-  const [selectedApiary, setSelectedApiary] = useState('Ratho');
+  const [selectedApiary, setSelectedApiary] = useState('null');
   const [showInspectionForm, setShowInspectionForm] = useState(false);
   const [selectedHive, setSelectedHive] = useState(null);
   const [latestInspection, setLatestInspection] = useState(null);
@@ -32,17 +32,26 @@ function App() {
           axios.get('http://localhost:3001/hives'),
           axios.get('http://localhost:3001/apiaries'),
         ]);
-
-        console.log("Hives fetched:", hivesRes.data); // Add this line
+  
+        console.log("Hives fetched:", hivesRes.data); 
         setInspections(inspectionsRes.data);
         setHives(hivesRes.data);
         setApiaries(apiariesRes.data);
+  
+        // ✅ Set the first apiary in the list as the default, if available
+        if (apiariesRes.data.length > 0) {
+          setSelectedApiary(apiariesRes.data[0].name);
+        } else {
+          setSelectedApiary(null);
+        }
+  
       } catch (err) {
         console.error('Error fetching data:', err);
       }
     };
     fetchData();
   }, []);
+  
 
   const handleInspectionSaved = async () => {
     try {
@@ -163,19 +172,30 @@ console.log("🔥 Updated apiaryHives:", apiaryHives);
     }
   };
 
-  const deleteHive = async (hiveId) => {
-    const confirmDelete = window.confirm("Are you sure you want to delete this hive?");
-    if (!confirmDelete) return; // Exit if the user cancels
+  const deleteHive = async (hiveNumber) => {
+  const confirmDelete = window.confirm(`Are you sure you want to delete Hive ${hiveNumber}?`);
+  if (!confirmDelete) return;
+
+  try {
+    console.log("🗑️ Deleting Hive:", hiveNumber); // Debugging log
+
+    const response = await axios.delete(`http://localhost:3001/hives/${hiveNumber}`);
     
-    try {
-      await axios.delete(`http://localhost:3001/hives/${hiveId}`);
-      setHives(hives.filter((hive) => hive.id !== hiveId)); // Update state
+    if (response.status === 200) {
+      console.log("✅ Hive deleted:", response.data);
+      setHives((prevHives) => prevHives.filter((hive) => hive.hive_number !== hiveNumber));
       alert("Hive deleted successfully!");
-    } catch (err) {
-      console.error("Error deleting hive:", err);
-      alert("Failed to delete hive.");
+    } else {
+      console.warn("⚠️ Unexpected response status:", response.status);
+      alert("Something went wrong. Hive may not have been deleted.");
     }
-  };
+  } catch (err) {
+    console.error("❌ Error deleting hive:", err);
+    alert("Failed to delete hive.");
+  }
+};
+
+  
   
 
   const sortedHives = [...hives].sort((a, b) => {
@@ -194,7 +214,7 @@ console.log("🔥 Updated apiaryHives:", apiaryHives);
         .sort((a, b) => new Date(b.date) - new Date(a.date))[0];  // Sort descending
 
     setLatestInspection(latest || null);  // ✅ Store latest inspection or null
-    setShowInspectionForm(true);
+    setShowInspectionForm(false);
 };
 
   const getHiveChartData = () => {
@@ -226,10 +246,12 @@ console.log("🔥 Updated apiaryHives:", apiaryHives);
 
 
   const handleApiaryChange = (e) => {
-    setSelectedApiary(e.target.value);
-    setSelectedHive(null);  // ✅ Reset selected hive
-    setLatestInspection(null);  // ✅ Reset latest inspection
+    const newApiary = e.target.value;
+    setSelectedApiary(newApiary || null); // ✅ Ensure it can be null
+    setSelectedHive(null);
+    setLatestInspection(null);
   };
+  
   
 
   console.log("selectedApiary:", selectedApiary);
@@ -268,84 +290,84 @@ console.log("apiaryHives:", apiaryHives);
           {activeTab === 'inspection-dashboard' && (
             <div className="space-y-6">
              <h2 className="text-xl font-semibold text-gray-700">Apiary</h2>
-<select
-  value={selectedApiary}
-  onChange={handleApiaryChange}  // ✅ Calls function to reset latest inspection
+             <select
+  value={selectedApiary || ''}  // ✅ Ensure it starts empty
+  onChange={handleApiaryChange}
   className="p-2 border rounded"
 >
+  <option value="" disabled>Select an Apiary</option> {/* ✅ Placeholder */}
   {apiaries.map((apiary) => (
     <option key={apiary.name} value={apiary.name}>
       {apiary.name}
     </option>
   ))}
 </select>
-              <div className="bg-gray-100 p-4 rounded">
-  <h3 className="text-lg font-medium">Hives in {selectedApiary}</h3>
-  <div className="flex flex-wrap gap-4 mt-2">
+
+
+{selectedApiary && (
+  <div className="bg-gray-100 p-4 rounded">
+    <h3 className="text-lg font-medium">Hives in {selectedApiary}</h3>
+    <div className="flex flex-wrap gap-4 mt-2">
     {apiaryHives.map((hive) => {
-      console.log("🐝 Rendering Hive:", hive);
+  console.log("🐝 Rendering Hive:", hive);
 
-      // ✅ Find the latest inspection for this hive
-      const latestInspection = inspections
-        .filter((i) => i.hive_id === hive.id)  // Ensure it matches the hive_id
-        .sort((a, b) => new Date(b.date) - new Date(a.date))[0];
+  // ✅ Find the latest inspection for this hive
+  const latestInspection = inspections
+    .filter((i) => i.hive_id === hive.id)
+    .sort((a, b) => new Date(b.date) - new Date(a.date))[0];
 
-      const actions = latestInspection?.follow_up_actions
-        ? latestInspection.follow_up_actions.split('\n')  // ✅ Display as list
-        : ['None'];  // If no actions, show 'None'
+  const actions = latestInspection?.follow_up_actions
+    ? latestInspection.follow_up_actions.split('\n')
+    : ['None'];
 
-      return (
-        
-        
-        <div
-          key={hive.hive_number}
-          className={`bg-white p-3 rounded shadow w-48 cursor-pointer hover:bg-amber-100 ${
-            selectedHive?.hive_number === hive.hive_number ? 'border-2 border-amber-500' : ''
-          }`}
-          onClick={() => {
-            console.log("🖱️ Hive clicked:", hive);
-            handleHiveClick(hive);
-          }}
-        >
-          <p className="font-semibold">
-            Hive {hive.hive_number} "{hive.name || 'Unnamed'}"
-          </p>
-          <p className="text-sm text-gray-600">
-            <strong>Actions:</strong>
-            {actions.map((action, index) => (
-              <span key={index} className="block">{action}</span>
-            ))}
-          </p>
-        </div>
-      );
-    })}
-  </div>
-{selectedHive && latestInspection && (
-  <div className="bg-gray-100 p-4 rounded-md shadow-md mt-4">
-    <h3 className="text-lg font-semibold text-gray-800">
-      Latest Inspection for Hive {selectedHive.hive_number}
-    </h3>
-    <p><strong>Date:</strong> {latestInspection.date}</p>
-    <p><strong>Queen Status:</strong> {latestInspection.queen_status || 'N/A'}</p>
-    <p><strong>Food Stores:</strong> {latestInspection.food_stores || 'N/A'}</p>
-    <p><strong>Temperature:</strong> {latestInspection.temperature || 'N/A'}</p>
-    <p><strong>Rain:</strong> {latestInspection.rain || 'N/A'}</p>
-    <p><strong>Brood Pattern:</strong> {latestInspection.brood_pattern || 'N/A'}</p>
-    <p><strong>Notes:</strong> {latestInspection.notes || 'None'}</p>
-    <p><strong>Follow-Up Actions:</strong></p>
-    <ul className="list-disc ml-6">
-      {latestInspection.follow_up_actions
-        ? latestInspection.follow_up_actions.split('\n').map((action, index) => (
-            <li key={index}>{action}</li>
-          ))
-        : <li>No actions</li>}
-    </ul>
-  </div>
+  return (
+    <div 
+      key={hive.hive_number}
+      className={`bg-white p-3 rounded shadow w-48 cursor-pointer hover:bg-amber-100 ${
+        selectedHive?.hive_number === hive.hive_number ? 'border-2 border-amber-500' : ''
+      }`}
+      onClick={() => handleHiveClick(hive)} // ✅ Ensure this properly updates selectedHive
+    >
+      <p className="font-semibold">
+        Hive {hive.hive_number} "{hive.name || 'Unnamed'}"
+      </p>
+      <p className="text-sm text-gray-600">
+        <strong>Actions:</strong>
+        {actions.map((action, index) => (
+          <span key={index} className="block">{action}</span>
+        ))}
+      </p>
+    </div>
+  );
+})}
+
+    </div>
+
+    {/* ✅ Wrap the following inside a div */}
+    {selectedHive && latestInspection && (
+      <div className="bg-gray-100 p-4 rounded-md shadow-md mt-4">
+        <h3 className="text-lg font-semibold text-gray-800">
+          Latest Inspection for Hive {selectedHive.hive_number}
+        </h3>
+        <p><strong>Date:</strong> {latestInspection.date}</p>
+        <p><strong>Queen Status:</strong> {latestInspection.queen_status || 'N/A'}</p>
+        <p><strong>Food Stores:</strong> {latestInspection.food_stores || 'N/A'}</p>
+        <p><strong>Temperature:</strong> {latestInspection.temperature || 'N/A'}</p>
+        <p><strong>Rain:</strong> {latestInspection.rain || 'N/A'}</p>
+        <p><strong>Brood Pattern:</strong> {latestInspection.brood_pattern || 'N/A'}</p>
+        <p><strong>Notes:</strong> {latestInspection.notes || 'None'}</p>
+        <p><strong>Follow-Up Actions:</strong></p>
+        <ul className="list-disc ml-6">
+          {latestInspection.follow_up_actions
+            ? latestInspection.follow_up_actions.split('\n').map((action, index) => (
+                <li key={index}>{action}</li>
+              ))
+            : <li>No actions</li>}
+        </ul>
+      </div>
+    )}
+  </div> // ✅ Closes the main div wrapper
 )}
-
-
-</div>
-
               <button
                 onClick={() => setShowInspectionForm(!showInspectionForm)}
                 className="w-full p-3 bg-amber-500 text-white rounded-md hover:bg-amber-600 transition-colors duration-200 font-medium"
@@ -425,13 +447,14 @@ console.log("apiaryHives:", apiaryHives);
           </select>
         </td>
         <td className="border p-2">
-          <button
-            onClick={() => deleteHive(hive.id)}
-            className="bg-red-500 text-white px-2 py-1 rounded hover:bg-red-700 transition-colors"
-          >
-            Delete
-          </button>
-        </td>
+  <button
+    onClick={() => deleteHive(hive.hive_number)}  // ✅ Ensure correct parameter
+    className="bg-red-500 text-white px-2 py-1 rounded hover:bg-red-700 transition-colors"
+  >
+    Delete
+  </button>
+</td>
+
       </tr>
     ))}
   </tbody>
