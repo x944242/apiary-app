@@ -14,29 +14,40 @@ function InspectionForm({ onInspectionSaved, selectedApiary, selectedHive, hives
   });
 
   const [previousActions, setPreviousActions] = useState([]);
+  const [latestInspection, setLatestInspection] = useState(null);
+
 
   useEffect(() => {
     const fetchPreviousActions = async () => {
       try {
         const response = await axios.get('http://localhost:3001/hive_inspections');
-        const latestInspection = response.data
+        const latestInspectionData = response.data
           .filter((i) => i.apiary === selectedApiary && i.hiveNumber === selectedHive?.hiveNumber)
           .sort((a, b) => new Date(b.date) - new Date(a.date))[0];
-        if (latestInspection && latestInspection.followUpActions) {
-          const actionsArray = latestInspection.followUpActions
-            .split('\n')
-            .filter((line) => line.trim())
-            .map((text, index) => ({ id: index + 1, text, checked: false }));
+  
+        if (latestInspectionData) {
+          setLatestInspection(latestInspectionData); // ✅ Store latest inspection data
+          const actionsArray = latestInspectionData.followUpActions
+            ? latestInspectionData.followUpActions
+                .split('\n')
+                .filter((line) => line.trim())
+                .map((text, index) => ({ id: index + 1, text, checked: false }))
+            : [];
           setPreviousActions(actionsArray);
         } else {
+          setLatestInspection(null); // ✅ Reset latest inspection if no data
           setPreviousActions([]);
         }
       } catch (err) {
         console.error('Error fetching previous actions:', err);
       }
     };
-    if (selectedHive) fetchPreviousActions();
-  }, [selectedHive, selectedApiary]);
+  
+    if (selectedHive) {
+      fetchPreviousActions();
+    }
+  }, [selectedHive, selectedApiary]); // ✅ Depend on `selectedApiary` and `selectedHive`
+  
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -92,12 +103,14 @@ function InspectionForm({ onInspectionSaved, selectedApiary, selectedHive, hives
 
     // ✅ Define `followUpActionsText` BEFORE using it
     const allActions = [
-        ...previousActions.filter((a) => !a.checked),
-        ...formData.actions.filter((a) => !a.checked && a.text.trim())
-    ];
-    const followUpActionsText = allActions.length > 0 
-        ? allActions.map((a, i) => `${i + 1}. ${a.text}`).join('\n') 
-        : null;
+      ...previousActions.filter((a) => !a.checked),
+      ...formData.actions.filter((a) => !a.checked && a.text.trim())
+  ];
+  
+  const followUpActionsText = allActions.length > 0 
+      ? allActions.map((a, i) => `${i + 1}. ${a.text}`).join('\n')  // Format actions as list
+      : null;
+  
 
     console.log("📤 Sending payload:", JSON.stringify({
         apiary: selectedApiary,

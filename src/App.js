@@ -22,6 +22,7 @@ function App() {
   const [selectedApiary, setSelectedApiary] = useState('Ratho');
   const [showInspectionForm, setShowInspectionForm] = useState(false);
   const [selectedHive, setSelectedHive] = useState(null);
+  const [latestInspection, setLatestInspection] = useState(null);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -43,41 +44,81 @@ function App() {
     fetchData();
   }, []);
 
-  const handleInspectionSaved = () => {
-    axios.get('http://localhost:3001/hive_inspections').then((res) => setInspections(res.data));
-  };
+  const handleInspectionSaved = async () => {
+    try {
+        const res = await axios.get('http://localhost:3001/hive_inspections');
+        setInspections(res.data);
 
-  const apiaryHives = hives.filter((hive) => {
-    console.log("🔍 Checking Hive:", hive);
-    console.log("Hive apiary_id:", hive.apiary_id, "Selected Apiary:", selectedApiary);
-  
+        // ✅ If a hive is selected, update its latest inspection
+        if (selectedHive) {
+            const latest = res.data
+                .filter((i) => i.hive_id === selectedHive.id)
+                .sort((a, b) => new Date(b.date) - new Date(a.date))[0];
+            setLatestInspection(latest || null);
+        }
+
+        console.log("🔄 Inspections updated after save:", res.data);
+    } catch (err) {
+        console.error('❌ Error fetching inspections after save:', err);
+    }
+};
+
+
+
+  const apiaryHives = hives
+  .filter((hive) => {
     const matchingApiary = apiaries.find(apiary => apiary.name === selectedApiary);
     return hive.apiary_id === (matchingApiary ? matchingApiary.id : null);
+  })
+  .sort((a, b) => {
+    if (a.apiary_id && !b.apiary_id) return -1;  // Assigned hives first
+    if (!a.apiary_id && b.apiary_id) return 1;   // Unassigned hives last
+    return a.hive_number - b.hive_number;        // Sort numerically
   });
+
+console.log("🔥 Updated apiaryHives:", apiaryHives);
+
   
-  console.log("🔥 Updated apiaryHives:", apiaryHives);
   
-  
-  const updateHive = async (hiveNumber, name, apiaryName, type) => {
+  const updateHive = async (hiveNumber, newName, newApiaryName, newType) => {
     try {
-      // Find the apiary by name and get its ID
-      const apiary = apiaries.find(a => a.name === apiaryName);
-      const apiary_id = apiary ? apiary.id : null; // If apiary exists, use its ID; otherwise, set null
-  
-      // Send the update request to the backend
-      await axios.put(`http://localhost:3001/hives/${hiveNumber}`, {
-        name: name !== undefined ? name : hives.find(h => h.hive_number === hiveNumber)?.name,
-        apiary_id,
-        type: type !== undefined ? type : hives.find(h => h.hive_number === hiveNumber)?.type,
-      });
-  
-      // Fetch the latest list of hives from the backend
-      const response = await axios.get('http://localhost:3001/hives');
-      setHives(response.data); // Update state with fresh hive data
+        // Find the existing hive by hive number
+        const hive = hives.find(h => h.hive_number === hiveNumber);
+        if (!hive) {
+            console.error("❌ Hive not found:", hiveNumber);
+            return;
+        }
+
+        // ✅ Preserve the existing apiary_id unless explicitly changed
+        let apiary_id = hive.apiary_id; 
+        if (newApiaryName !== undefined) {
+            const apiary = apiaries.find(a => a.name === newApiaryName);
+            apiary_id = apiary ? apiary.id : null;  // Assign new apiary ID if changed
+        }
+
+        // ✅ Preserve existing name and type if not explicitly changed
+        const updatedName = newName !== undefined ? newName : hive.name;
+        const updatedType = newType !== undefined ? newType : hive.type;
+
+        console.log("📤 Updating hive:", { hiveNumber, updatedName, apiary_id, updatedType });
+
+        // ✅ Send the update request to the backend
+        await axios.put(`http://localhost:3001/hives/${hiveNumber}`, {
+            name: updatedName,
+            apiary_id, // ✅ Ensures it remains unchanged if not modified
+            type: updatedType,
+        });
+
+        // ✅ Fetch the latest list of hives from the backend
+        const response = await axios.get('http://localhost:3001/hives');
+        setHives(response.data); // Update state with fresh hive data
+        console.log("✅ Hive updated successfully");
     } catch (err) {
-      console.error('Error updating hive:', err);
+        console.error('❌ Error updating hive:', err);
     }
-  };
+};
+
+
   
   
 
@@ -144,10 +185,17 @@ function App() {
   });
 
   const handleHiveClick = (hive) => {
-    console.log("Hive clicked:", hive);
+    console.log("🖱️ Hive clicked:", hive);
     setSelectedHive(hive);
+
+    // ✅ Find the latest inspection for this hive
+    const latest = inspections
+        .filter((i) => i.hive_id === hive.id)  // Ensure it matches the hive_id
+        .sort((a, b) => new Date(b.date) - new Date(a.date))[0];  // Sort descending
+
+    setLatestInspection(latest || null);  // ✅ Store latest inspection or null
     setShowInspectionForm(true);
-  };
+};
 
   const getHiveChartData = () => {
     const hiveCounts = apiaries.map((apiary) => ({
@@ -176,6 +224,13 @@ function App() {
     },
   };
 
+
+  const handleApiaryChange = (e) => {
+    setSelectedApiary(e.target.value);
+    setSelectedHive(null);  // ✅ Reset selected hive
+    setLatestInspection(null);  // ✅ Reset latest inspection
+  };
+  
 
   console.log("selectedApiary:", selectedApiary);
 console.log("apiaryHives:", apiaryHives);
@@ -212,34 +267,36 @@ console.log("apiaryHives:", apiaryHives);
         <div className="max-w-4xl mx-auto bg-white rounded-lg shadow-lg p-6 space-y-6">
           {activeTab === 'inspection-dashboard' && (
             <div className="space-y-6">
-              <h2 className="text-xl font-semibold text-gray-700">Apiary</h2>
-              <select
-                value={selectedApiary}
-                onChange={(e) => setSelectedApiary(e.target.value)}
-                className="p-2 border rounded"
-              >
-                {apiaries.map((apiary) => (
-                  <option key={apiary.name} value={apiary.name}>
-                    {apiary.name}
-                  </option>
-                ))}
-              </select>
+             <h2 className="text-xl font-semibold text-gray-700">Apiary</h2>
+<select
+  value={selectedApiary}
+  onChange={handleApiaryChange}  // ✅ Calls function to reset latest inspection
+  className="p-2 border rounded"
+>
+  {apiaries.map((apiary) => (
+    <option key={apiary.name} value={apiary.name}>
+      {apiary.name}
+    </option>
+  ))}
+</select>
               <div className="bg-gray-100 p-4 rounded">
   <h3 className="text-lg font-medium">Hives in {selectedApiary}</h3>
   <div className="flex flex-wrap gap-4 mt-2">
     {apiaryHives.map((hive) => {
       console.log("🐝 Rendering Hive:", hive);
 
-      // Find the latest inspection for this hive
+      // ✅ Find the latest inspection for this hive
       const latestInspection = inspections
-        .filter((i) => i.hive_number === hive.hive_number && i.apiary === selectedApiary)
+        .filter((i) => i.hive_id === hive.id)  // Ensure it matches the hive_id
         .sort((a, b) => new Date(b.date) - new Date(a.date))[0];
 
-      const actions = latestInspection?.followUpActions
-        ? latestInspection.followUpActions.split('\n')
-        : ['None'];
+      const actions = latestInspection?.follow_up_actions
+        ? latestInspection.follow_up_actions.split('\n')  // ✅ Display as list
+        : ['None'];  // If no actions, show 'None'
 
       return (
+        
+        
         <div
           key={hive.hive_number}
           className={`bg-white p-3 rounded shadow w-48 cursor-pointer hover:bg-amber-100 ${
@@ -254,7 +311,7 @@ console.log("apiaryHives:", apiaryHives);
             Hive {hive.hive_number} "{hive.name || 'Unnamed'}"
           </p>
           <p className="text-sm text-gray-600">
-            Actions:
+            <strong>Actions:</strong>
             {actions.map((action, index) => (
               <span key={index} className="block">{action}</span>
             ))}
@@ -263,7 +320,32 @@ console.log("apiaryHives:", apiaryHives);
       );
     })}
   </div>
+{selectedHive && latestInspection && (
+  <div className="bg-gray-100 p-4 rounded-md shadow-md mt-4">
+    <h3 className="text-lg font-semibold text-gray-800">
+      Latest Inspection for Hive {selectedHive.hive_number}
+    </h3>
+    <p><strong>Date:</strong> {latestInspection.date}</p>
+    <p><strong>Queen Status:</strong> {latestInspection.queen_status || 'N/A'}</p>
+    <p><strong>Food Stores:</strong> {latestInspection.food_stores || 'N/A'}</p>
+    <p><strong>Temperature:</strong> {latestInspection.temperature || 'N/A'}</p>
+    <p><strong>Rain:</strong> {latestInspection.rain || 'N/A'}</p>
+    <p><strong>Brood Pattern:</strong> {latestInspection.brood_pattern || 'N/A'}</p>
+    <p><strong>Notes:</strong> {latestInspection.notes || 'None'}</p>
+    <p><strong>Follow-Up Actions:</strong></p>
+    <ul className="list-disc ml-6">
+      {latestInspection.follow_up_actions
+        ? latestInspection.follow_up_actions.split('\n').map((action, index) => (
+            <li key={index}>{action}</li>
+          ))
+        : <li>No actions</li>}
+    </ul>
+  </div>
+)}
+
+
 </div>
+
               <button
                 onClick={() => setShowInspectionForm(!showInspectionForm)}
                 className="w-full p-3 bg-amber-500 text-white rounded-md hover:bg-amber-600 transition-colors duration-200 font-medium"
@@ -306,23 +388,27 @@ console.log("apiaryHives:", apiaryHives);
       <tr key={hive.hive_number}>
         <td className="border p-2">{hive.hive_number}</td>
         <td className="border p-2">
-          <input
-            type="text"
-            value={hive.name || ''}
-            onChange={(e) => updateHive(hive.hive_number, e.target.value, hive.apiary_id, hive.type)}
-            className="w-full p-1 border rounded"
-          />
+        <input
+  type="text"
+  value={hive.name}
+  onChange={(e) => updateHive(hive.hive_number, e.target.value, selectedApiary, hive.type)}
+  className="border rounded p-2 w-full"
+/>
         </td>
         <td className="border p-2">
-          <select
-            value={hive.type || 'Full size'}
-            onChange={(e) => updateHive(hive.hive_number, hive.name, hive.apiary_id, e.target.value)}
-            className="w-full p-1 border rounded"
-          >
-            <option value="Full size">Full size</option>
-            <option value="Nuc">Nuc</option>
-            <option value="Mating nuc">Mating nuc</option>
-          </select>
+        <select
+    value={hive.type || ''}  // Ensure it's never undefined
+    onChange={(e) => {
+      console.log("🔄 Changing hive type:", e.target.value, "for hive:", hive);
+      updateHive(hive.hive_number, hive.name, selectedApiary, e.target.value);
+    }}
+    className="border rounded p-2"
+  >
+    <option value="Full size">Full Size</option>
+    <option value="Nuc">Nuc</option>
+    <option value="Queen Rearing">Queen Rearing</option>
+    <option value="Observation">Observation</option>
+  </select>
         </td>
         <td className="border p-2">
           <select
