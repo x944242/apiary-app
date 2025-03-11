@@ -25,24 +25,19 @@ function App() {
   const [latestInspection, setLatestInspection] = useState(null);
 
   useEffect(() => {
-    const fetchData = async () => {
+    const fetchApiaries = async () => {
       try {
-        const [inspectionsRes, hivesRes, apiariesRes] = await Promise.all([
-          axios.get('http://localhost:3001/hive_inspections'),
-          axios.get('http://localhost:3001/hives'),
-          axios.get('http://localhost:3001/apiaries'),
-        ]);
-
-        console.log('Hives fetched:', hivesRes.data);
-        setInspections(inspectionsRes.data);
-        setHives(hivesRes.data);
-        setApiaries(apiariesRes.data);
+        const response = await axios.get('http://localhost:3001/apiaries');
+        console.log('✅ Fetched latest apiary data:', response.data);
+        setApiaries(response.data);
       } catch (err) {
-        console.error('Error fetching data:', err);
+        console.error('❌ Error fetching apiaries:', err);
       }
     };
-    fetchData();
+  
+    fetchApiaries();
   }, []);
+  
 
   const handleInspectionSaved = async () => {
     try {
@@ -142,21 +137,38 @@ function App() {
   };
 
   const deleteApiary = async (id) => {
+    console.log(`🧐 Attempting to delete apiary with ID:`, id);
+  
     const password = prompt('Enter the security password to confirm deletion:');
-    if (password === 'confirm') {
-      try {
-        console.log(`📛 Attempting to delete apiary with id: ${id}`);
-        await axios.delete(`http://localhost:3001/apiaries/${id}`);
-        setApiaries(apiaries.filter((apiary) => apiary.id !== id));
-        setHives(hives.map((hive) => (hive.apiary_id === id ? { ...hive, apiary_id: null } : hive)));
-        console.log(`✅ Apiary ${id} deleted from state`);
-      } catch (err) {
-        console.error('❌ Error deleting apiary:', err.response ? err.response.data : err.message);
-      }
-    } else {
+    if (password !== 'confirm') {
       alert('Incorrect password. Deletion canceled.');
+      return;
+    }
+  
+    try {
+      const response = await axios.delete(`http://localhost:3001/apiaries/${id}`);
+  
+      if (response.data && response.data.error) {
+        console.error('❌ Failed to delete apiary:', response.data.error);
+        alert(`Failed: ${response.data.error}`);
+        return;
+      }
+  
+      console.log(`✅ Apiary ${id} deleted successfully! Removing from state...`);
+  
+      // 🔥 Immediately update the state to remove the deleted apiary
+      setApiaries((prevApiaries) => prevApiaries.filter(apiary => apiary.id !== id));
+  
+      alert('Apiary deleted successfully!');
+    } catch (err) {
+      console.error('❌ Error deleting apiary:', err);
+      alert(`Failed to delete apiary: ${err.response ? err.response.data.error : err.message}`);
     }
   };
+  
+  
+  
+  
 
   const deleteHive = async (hiveId) => {
     const confirmDelete = window.confirm('Are you sure you want to delete this hive?');
@@ -417,7 +429,7 @@ function App() {
               {apiaries.map((apiary) => (
                 <div key={apiary.id} className="flex justify-between items-center bg-gray-100 p-2 rounded">
                 <span>{apiary.name || 'Unnamed Apiary'} - Postcode: {apiary.postcode || 'Not set'}</span>
-                <button onClick={() => deleteApiary(apiary.name)} className="bg-red-500 text-white px-2 py-1 rounded">
+                <button onClick={() => deleteApiary(apiary.id)} className="bg-red-500 text-white px-2 py-1 rounded">
                   Delete
                   </button>
                 </div>

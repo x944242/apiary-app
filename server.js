@@ -241,59 +241,95 @@ app.put('/hives/:id', async (req, res) => {
 // ✅ Delete Apiary
 app.delete('/apiaries/:id', async (req, res) => {
   const { id } = req.params;
-  console.log(`📛 DELETE /apiaries/${id}`);
-  try {
-    const { data: apiary, error: fetchError } = await supabase
-      .from('apiaries')
-      .select('id')
-      .eq('id', id)
-      .single();
-    if (fetchError || !apiary) {
-      console.error(`❌ Apiary with id ${id} not found`);
-      return res.status(404).json({ error: 'Apiary not found' });
-    }
 
-    console.log(`🔄 Updating hives for apiary_id: ${apiary.id}`);
-    const { error: updateError } = await supabase
+  if (!id) {
+    console.error('❌ Error: Missing apiary ID in request.');
+    return res.status(400).json({ error: 'Apiary ID is required.' });
+  }
+
+  try {
+    console.log(`📛 Attempting to delete apiary ID: ${id}`);
+
+    // Step 1: Unassign all hives from this apiary
+    const { error: hiveError } = await supabase
       .from('hives')
       .update({ apiary_id: null })
-      .eq('apiary_id', apiary.id);
-    if (updateError) {
-      console.error('❌ Error updating hives:', updateError);
-      throw updateError;
+      .eq('apiary_id', id);
+
+    if (hiveError) {
+      console.error('❌ Error unassigning hives:', hiveError);
+      return res.status(500).json({ error: 'Failed to unassign hives' });
     }
 
-    console.log(`🗑️ Deleting apiary with id: ${id}`);
-    const { error: deleteError } = await supabase
+    // Step 2: Delete the apiary
+    const { data, error: deleteError } = await supabase
       .from('apiaries')
       .delete()
       .eq('id', id);
+
     if (deleteError) {
       console.error('❌ Error deleting apiary:', deleteError);
-      throw deleteError;
+      return res.status(500).json({ error: 'Failed to delete apiary' });
     }
 
-    console.log(`✅ Apiary ${id} deleted successfully`);
-    res.sendStatus(204);
+    if (!data || data.length === 0) {
+      console.log('⚠️ Apiary not found:', id);
+      return res.status(404).json({ error: 'Apiary not found' });
+    }
+
+    console.log(`✅ Apiary deleted successfully:`, data);
+    res.json({ message: 'Apiary deleted successfully' });
   } catch (err) {
-    console.error('❌ Supabase error:', err.message, err.details || err.stack);
-    res.status(500).json({ error: 'Failed to delete apiary', details: err.message });
+    console.error('❌ Error deleting apiary:', err);
+    res.status(500).json({ error: 'Internal server error' });
   }
 });
 
+
 // ✅ Delete Hive
-app.delete('/hives/:id', async (req, res) => {
+app.delete('/apiaries/:id', async (req, res) => {
   const { id } = req.params;
+
+  if (!id) {
+    console.error('❌ Error: Missing apiary ID in request.');
+    return res.status(400).json({ error: 'Apiary ID is required.' });
+  }
+
   try {
-    const { error } = await supabase
+    console.log(`📛 Attempting to delete apiary ID: ${id}`);
+
+    // Step 1: Unassign all hives from this apiary
+    const { error: hiveError } = await supabase
       .from('hives')
+      .update({ apiary_id: null })
+      .eq('apiary_id', id);
+
+    if (hiveError) {
+      console.error('❌ Error unassigning hives:', hiveError);
+      return res.status(500).json({ error: 'Failed to unassign hives' });
+    }
+
+    // Step 2: Delete the apiary
+    const { data, error: deleteError } = await supabase
+      .from('apiaries')
       .delete()
-      .match({ id });
-    if (error) throw error;
-    res.status(200).send({ message: 'Hive deleted successfully' });
-  } catch (error) {
-    console.error('Error deleting hive:', error);
-    res.status(500).send('Server error');
+      .eq('id', id);
+
+    if (deleteError) {
+      console.error('❌ Error deleting apiary:', deleteError);
+      return res.status(500).json({ error: 'Failed to delete apiary' });
+    }
+
+    if (!data || data.length === 0) {
+      console.log('⚠️ Apiary not found:', id);
+      return res.status(404).json({ error: 'Apiary not found' });
+    }
+
+    console.log(`✅ Apiary deleted successfully:`, data);
+    res.json({ message: 'Apiary deleted successfully' });
+  } catch (err) {
+    console.error('❌ Error deleting apiary:', err);
+    res.status(500).json({ error: 'Internal server error' });
   }
 });
 
