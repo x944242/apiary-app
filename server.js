@@ -18,7 +18,7 @@ console.log('✅ Supabase client initialized');
 
 // ✅ CORS Configuration
 app.use((req, res, next) => {
-  res.setHeader('Access-Control-Allow-Origin', 'http://localhost:3000'); // Adjust if needed
+  res.setHeader('Access-Control-Allow-Origin', 'http://localhost:3000');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
   console.log(`🛠️ Middleware: ${req.method} ${req.path} from ${req.headers.origin || 'Unknown'}`);
@@ -35,12 +35,16 @@ app.get('/', (req, res) => {
 
 // ✅ Fetch Inspections
 app.get('/hive_inspections', async (req, res) => {
-  console.log('📊 GET /inspections');
+  console.log('📊 GET /hive_inspections');
   try {
     const { data, error } = await supabase
       .from('hive_inspections')
-      .select('*')
-      .order('date', { ascending: false });
+      .select(`
+        id, hive_id, inspection_date, next_inspection_needs,
+        queen_status (queen_seen, egg_laying, notes),
+        brood_presence (brood_pattern, notes)
+      `)
+      .order('inspection_date', { ascending: false });
     if (error) throw error;
     res.json(data);
   } catch (err) {
@@ -52,13 +56,11 @@ app.get('/hive_inspections', async (req, res) => {
 // ✅ Add Inspection
 app.post('/hive_inspections', async (req, res) => {
   console.log('📝 POST /hive_inspections received:', req.body);
-  
-  // ✅ Extract `hive_id` from request body
-  const { apiary, hive_id, date, queenStatus, foodStores, temperature, rain, broodPattern, notes, followUpActions } = req.body;
+  const { hive_id, date, queenStatus, broodPattern, notes, followUpActions } = req.body;
 
   if (!hive_id) {
-    console.error("❌ Missing hive_id in request body:", req.body);
-    return res.status(400).json({ error: "hive_id is required" });
+    console.error('❌ Missing hive_id in request body:', req.body);
+    return res.status(400).json({ error: 'hive_id is required' });
   }
 
   try {
@@ -66,47 +68,63 @@ app.post('/hive_inspections', async (req, res) => {
     const { data: hiveData, error: hiveError } = await supabase
       .from('hives')
       .select('id')
-      .eq('id', hive_id)  // ✅ Check `hive_id` directly
+      .eq('id', hive_id)
       .single();
-
     if (!hiveData || hiveError) {
-      console.error("❌ Hive not found:", hiveError);
-      return res.status(400).json({ error: "Hive not found" });
+      console.error('❌ Hive not found:', hiveError);
+      return res.status(400).json({ error: 'Hive not found' });
     }
 
-    // ✅ Insert into `hive_inspections` using `hive_id`
-    const { data, error } = await supabase
+    // ✅ Insert into hive_inspections
+    const { data: inspectionData, error: inspError } = await supabase
       .from('hive_inspections')
       .insert([
         {
-          hive_id,  // ✅ Now correctly defined
-          date,
-          queen_status: queenStatus || null,
-          food_stores: foodStores || null,
-          temperature: temperature || null,
-          rain: rain || null,
-          brood_pattern: broodPattern || null,
-          notes: notes || null,
-          follow_up_actions: followUpActions || null,
+          hive_id,
+          inspection_date: date,
+          next_inspection_needs: followUpActions || null,
         },
       ])
-      .select();
+      .select()
+      .single();
+    if (inspError) throw inspError;
 
-    if (error) throw error;
-    res.json(data[0]);
+    const inspectionId = inspectionData.id;
 
+    // ✅ Insert into queen_status
+    if (queenStatus) {
+      const queenSeen = queenStatus === 'Queen seen' || queenStatus === 'Brood but not queen seen';
+      const eggLaying = queenStatus === 'Brood but not queen seen' ? 'good pattern' : 
+                        queenStatus === 'Probably queenless' ? 'absent' : 
+                        queenStatus === 'Laying workers' ? 'patchy' : null;
+      const { error: queenError } = await supabase
+        .from('queen_status')
+        .insert([{ inspection_id: inspectionId, queen_seen: queenSeen, egg_laying: eggLaying, notes: notes || null }]);
+      if (queenError) throw queenError;
+    }
+
+    // ✅ Insert into brood_presence
+    if (broodPattern) {
+      const { error: broodError } = await supabase
+        .from('brood_presence')
+        .insert([{ inspection_id: inspectionId, brood_pattern: broodPattern, notes: notes || null }]);
+      if (broodError) throw broodError;
+    }
+
+    res.json(inspectionData);
   } catch (err) {
     console.error('❌ Database error:', err.stack);
     res.status(500).send('Server error');
   }
 });
 
-
 // ✅ Fetch Apiaries
 app.get('/apiaries', async (req, res) => {
   console.log('🏡 GET /apiaries');
   try {
-    const { data, error } = await supabase.from('apiaries').select('*');
+    const { data, error } = await supabase
+      .from('apiaries')
+      .select('id, name, postcode');
     if (error) throw error;
     res.json(data);
   } catch (err) {
@@ -119,18 +137,25 @@ app.get('/apiaries', async (req, res) => {
 app.post('/apiaries', async (req, res) => {
   console.log('📍 POST /apiaries received:', req.body);
   const { name, postcode } = req.body;
+
   try {
-    const beekeeper_id = 1; // Default beekeeper
+    const beekeeper_id = 1; // Hardcoded for now
+    const apiaryData = {
+      beekeeper_id,
+      name: name || null, // Allow empty name
+      postcode: postcode || null, // Allow empty postcode
+    };
+    console.log('🔍 Inserting into Supabase:', apiaryData);
     const { data, error } = await supabase
       .from('apiaries')
-      .insert([{ beekeeper_id, name, postcode }])
+      .insert([apiaryData])
       .select();
     if (error) throw error;
     console.log('✅ Successfully inserted:', data);
     res.json(data[0]);
   } catch (err) {
-    console.error('❌ Database error:', err.stack);
-    res.status(500).send('Server error');
+    console.error('❌ Database error:', err.message, err.details || err.stack);
+    res.status(500).json({ error: err.message || 'Server error', details: err.details });
   }
 });
 
@@ -138,7 +163,9 @@ app.post('/apiaries', async (req, res) => {
 app.get('/hives', async (req, res) => {
   console.log('🐝 GET /hives');
   try {
-    const { data, error } = await supabase.from('hives').select('*');
+    const { data, error } = await supabase
+      .from('hives')
+      .select('id, apiary_id, name, hive_type');
     if (error) throw error;
     res.json(data);
   } catch (err) {
@@ -151,47 +178,23 @@ app.get('/hives', async (req, res) => {
 app.post('/hives', async (req, res) => {
   console.log('🔍 POST /hives received:', req.body);
   res.setHeader('Access-Control-Allow-Origin', 'http://localhost:3000');
-
   const { name, currentApiary, type } = req.body;
 
   try {
-    console.log('🔍 Finding the highest existing hive number...');
-    const { data: hives, error: hiveError } = await supabase
-      .from('hives')
-      .select('hive_number');
-
-    if (hiveError) {
-      console.error('❌ Supabase error fetching hives:', hiveError);
-      return res.status(500).send(`Error fetching hives: ${hiveError.message}`);
-    }
-
-    // Get next available hive number (default to 1 if no hives exist)
-    const hiveNumbers = hives.map(h => h.hive_number);
-    const nextHiveNumber = hiveNumbers.length ? Math.max(...hiveNumbers) + 1 : 1;
-
-    console.log('✅ Next hive number assigned:', nextHiveNumber);
-
     console.log('🔍 Checking if apiary exists:', currentApiary);
     let apiaryId = null;
-
     if (currentApiary) {
       const { data: apiary, error: apiaryError } = await supabase
         .from('apiaries')
         .select('id')
         .eq('name', currentApiary)
         .single();
-
       if (apiaryError && apiaryError.code !== 'PGRST116') {
         console.error('❌ Supabase error fetching apiary:', apiaryError);
         return res.status(500).send(`Error fetching apiary: ${apiaryError.message}`);
       }
-
-      if (apiary) {
-        apiaryId = apiary.id;
-      } else {
-        console.warn('⚠️ No apiary found for:', currentApiary);
-        apiaryId = null;
-      }
+      if (apiary) apiaryId = apiary.id;
+      else console.warn('⚠️ No apiary found for:', currentApiary);
     }
 
     console.log('✅ Using apiary_id:', apiaryId);
@@ -200,18 +203,13 @@ app.post('/hives', async (req, res) => {
       .from('hives')
       .insert([
         {
-          hive_number: nextHiveNumber,
+          apiary_id: apiaryId,
           name: name || '',
-          apiary_id: apiaryId,  // Will be NULL if no valid apiary found
-          type: type || 'Full size',
+          hive_type: type || 'Langstroth',
         },
       ])
       .select();
-
-    if (error) {
-      console.error('❌ Supabase error inserting hive:', error);
-      return res.status(500).send(`Error inserting hive: ${error.message}`);
-    }
+    if (error) throw error;
 
     console.log('✅ Successfully inserted hive:', data);
     res.json(data[0]);
@@ -221,18 +219,17 @@ app.post('/hives', async (req, res) => {
   }
 });
 
-
-app.put('/hives/:hiveNumber', async (req, res) => {
-  const { hiveNumber } = req.params;
-  const { name, apiary_id, type } = req.body;
+// ✅ Update Hive
+app.put('/hives/:id', async (req, res) => {
+  const { id } = req.params;
+  const { name, apiary_id, hive_type } = req.body;
 
   try {
     const { data, error } = await supabase
       .from('hives')
-      .update({ name, apiary_id, type })
-      .eq('hive_number', hiveNumber)
+      .update({ name, apiary_id, hive_type })
+      .eq('id', id)
       .select();
-
     if (error) throw error;
     res.json(data[0]);
   } catch (err) {
@@ -241,43 +238,50 @@ app.put('/hives/:hiveNumber', async (req, res) => {
   }
 });
 
-
-app.delete('/apiaries/:name', async (req, res) => {
-  const { name } = req.params;
-  console.log(`DELETE /apiaries/${name}`);
-
+// ✅ Delete Apiary
+app.delete('/apiaries/:id', async (req, res) => {
+  const { id } = req.params;
+  console.log(`📛 DELETE /apiaries/${id}`);
   try {
     const { data: apiary, error: fetchError } = await supabase
       .from('apiaries')
       .select('id')
-      .eq('name', name)
+      .eq('id', id)
       .single();
-
     if (fetchError || !apiary) {
+      console.error(`❌ Apiary with id ${id} not found`);
       return res.status(404).json({ error: 'Apiary not found' });
     }
 
-    // Remove apiary reference from hives
+    console.log(`🔄 Updating hives for apiary_id: ${apiary.id}`);
     const { error: updateError } = await supabase
       .from('hives')
       .update({ apiary_id: null })
       .eq('apiary_id', apiary.id);
-    if (updateError) throw updateError;
+    if (updateError) {
+      console.error('❌ Error updating hives:', updateError);
+      throw updateError;
+    }
 
-    // Delete the apiary
+    console.log(`🗑️ Deleting apiary with id: ${id}`);
     const { error: deleteError } = await supabase
       .from('apiaries')
       .delete()
-      .eq('name', name);
-    if (deleteError) throw deleteError;
+      .eq('id', id);
+    if (deleteError) {
+      console.error('❌ Error deleting apiary:', deleteError);
+      throw deleteError;
+    }
 
+    console.log(`✅ Apiary ${id} deleted successfully`);
     res.sendStatus(204);
   } catch (err) {
-    console.error('Supabase error:', err);
-    res.status(500).json({ error: 'Failed to delete apiary' });
+    console.error('❌ Supabase error:', err.message, err.details || err.stack);
+    res.status(500).json({ error: 'Failed to delete apiary', details: err.message });
   }
 });
 
+// ✅ Delete Hive
 app.delete('/hives/:id', async (req, res) => {
   const { id } = req.params;
   try {
@@ -285,16 +289,13 @@ app.delete('/hives/:id', async (req, res) => {
       .from('hives')
       .delete()
       .match({ id });
-
     if (error) throw error;
-
     res.status(200).send({ message: 'Hive deleted successfully' });
   } catch (error) {
     console.error('Error deleting hive:', error);
     res.status(500).send('Server error');
   }
 });
-
 
 // ✅ Debug Route
 app.get('/debug', (req, res) => {
