@@ -56,7 +56,7 @@ app.get('/hive_inspections', async (req, res) => {
 // ✅ Add Inspection
 app.post('/hive_inspections', async (req, res) => {
   console.log('📝 POST /hive_inspections received:', req.body);
-  const { hive_id, date, queenStatus, broodPattern, notes, followUpActions } = req.body;
+  const { hive_id, date, queenStatus, broodPattern, notes, followUpActions, completedActions } = req.body; // Get completedActions
 
   if (!hive_id) {
     console.error('❌ Missing hive_id in request body:', req.body);
@@ -83,6 +83,7 @@ app.post('/hive_inspections', async (req, res) => {
           hive_id,
           inspection_date: date,
           next_inspection_needs: followUpActions || null,
+          completed_actions: JSON.stringify(completedActions) || null, // Store completed actions as JSONB
         },
       ])
       .select()
@@ -94,9 +95,9 @@ app.post('/hive_inspections', async (req, res) => {
     // ✅ Insert into queen_status
     if (queenStatus) {
       const queenSeen = queenStatus === 'Queen seen' || queenStatus === 'Brood but not queen seen';
-      const eggLaying = queenStatus === 'Brood but not queen seen' ? 'good pattern' : 
-                        queenStatus === 'Probably queenless' ? 'absent' : 
-                        queenStatus === 'Laying workers' ? 'patchy' : null;
+      const eggLaying = queenStatus === 'Brood but not queen seen' ? 'good pattern' :
+        queenStatus === 'Probably queenless' ? 'absent' :
+          queenStatus === 'Laying workers' ? 'patchy' : null;
       const { error: queenError } = await supabase
         .from('queen_status')
         .insert([{ inspection_id: inspectionId, queen_seen: queenSeen, egg_laying: eggLaying, notes: notes || null }]);
@@ -281,61 +282,42 @@ app.delete('/apiaries/:id', async (req, res) => {
   }
 });
 
-
 // ✅ Delete Hive
-app.delete('/apiaries/:id', async (req, res) => {
+app.delete('/hives/:id', async (req, res) => {
   const { id } = req.params;
 
   if (!id) {
-    console.error('❌ Error: Missing apiary ID in request.');
-    return res.status(400).json({ error: 'Apiary ID is required.' });
+    console.error('❌ Error: Missing hive ID in request.');
+    return res.status(400).json({ error: 'Hive ID is required.' });
   }
 
   try {
-    console.log(`📛 Attempting to delete apiary ID: ${id}`);
+    console.log(`📛 Attempting to delete hive ID: ${id}`);
 
-    // Step 1: Unassign all hives from this apiary
-    const { error: hiveError } = await supabase
-      .from('hives')
-      .update({ apiary_id: null })
-      .eq('apiary_id', id);
-
-    if (hiveError) {
-      console.error('❌ Error unassigning hives:', hiveError);
-      return res.status(500).json({ error: 'Failed to unassign hives' });
-    }
-
-    // Step 2: Delete the apiary
     const { data, error: deleteError } = await supabase
-      .from('apiaries')
+      .from('hives')
       .delete()
       .eq('id', id);
 
     if (deleteError) {
-      console.error('❌ Error deleting apiary:', deleteError);
-      return res.status(500).json({ error: 'Failed to delete apiary' });
+      console.error('❌ Error deleting hive:', deleteError);
+      return res.status(500).json({ error: 'Failed to delete hive' });
     }
 
     if (!data || data.length === 0) {
-      console.log('⚠️ Apiary not found:', id);
-      return res.status(404).json({ error: 'Apiary not found' });
+      console.log('⚠️ Hive not found:', id);
+      return res.status(404).json({ error: 'Hive not found' });
     }
 
-    console.log(`✅ Apiary deleted successfully:`, data);
-    res.json({ message: 'Apiary deleted successfully' });
+    console.log(`✅ Hive deleted successfully:`, data);
+    res.json({ message: 'Hive deleted successfully' });
   } catch (err) {
-    console.error('❌ Error deleting apiary:', err);
+    console.error('❌ Error deleting hive:', err);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
 
-// ✅ Debug Route
-app.get('/debug', (req, res) => {
-  res.send('Debugging route working!');
-});
-
-
-// Add this new endpoint after other routes but before the server start
+// ✅ Update Apiary
 app.put('/apiaries/:id', async (req, res) => {
   const { id } = req.params;
   const { name, postcode } = req.body;
@@ -366,6 +348,12 @@ app.put('/apiaries/:id', async (req, res) => {
     res.status(500).json({ error: 'Internal server error' });
   }
 });
+
+// ✅ Debug Route
+app.get('/debug', (req, res) => {
+  res.send('Debugging route working!');
+});
+
 // ✅ Start Server
 const PORT = 3001;
 app.listen(PORT, () => console.log(`✅ Server running on http://localhost:${PORT}`));
