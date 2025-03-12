@@ -39,6 +39,18 @@ function App() {
   }, []);
   
 
+  useEffect(() => {
+    const fetchHives = async () => {
+      try {
+        const response = await axios.get('http://localhost:3001/hives');
+        setHives(response.data);
+      } catch (err) {
+        console.error('Error fetching hives:', err);
+      }
+    };
+    fetchHives();
+  }, []);
+
   const handleInspectionSaved = async () => {
     try {
       const res = await axios.get('http://localhost:3001/hive_inspections');
@@ -136,36 +148,70 @@ function App() {
     }
   };
 
+  const updateApiary = async (apiaryId, newName, newPostcode) => {
+    try {
+      const apiary = apiaries.find((a) => a.id === apiaryId);
+      if (!apiary) {
+        console.error('❌ Apiary not found:', apiaryId);
+        return;
+      }
+
+      const updatedName = newName !== undefined ? newName : apiary.name;
+      const updatedPostcode = newPostcode !== undefined ? newPostcode : apiary.postcode;
+
+      console.log('📤 Updating apiary:', { apiaryId, updatedName, updatedPostcode });
+
+      await axios.put(`http://localhost:3001/apiaries/${apiaryId}`, {
+        name: updatedName,
+        postcode: updatedPostcode,
+      });
+
+      const response = await axios.get('http://localhost:3001/apiaries');
+      setApiaries(response.data);
+      console.log('✅ Apiary updated successfully');
+    } catch (err) {
+      console.error('❌ Error updating apiary:', err);
+    }
+  };
+
   const deleteApiary = async (id) => {
     console.log(`🧐 Attempting to delete apiary with ID:`, id);
   
-    const password = prompt('Enter the security password to confirm deletion:');
-    if (password !== 'confirm') {
-      alert('Incorrect password. Deletion canceled.');
-      return;
-    }
-  
     try {
       const response = await axios.delete(`http://localhost:3001/apiaries/${id}`);
-  
-      if (response.data && response.data.error) {
-        console.error('❌ Failed to delete apiary:', response.data.error);
+      
+      // Check if the response indicates success or a tolerable error
+      if (response.status === 200 || (response.data && response.data.error === 'Apiary not found')) {
+        console.log(`✅ Apiary ${id} deleted successfully or already gone!`);
+        alert('Apiary deleted successfully!');
+      } else if (response.data && response.data.error) {
+        console.error('❌ Unexpected error deleting apiary:', response.data.error);
         alert(`Failed: ${response.data.error}`);
-        return;
       }
   
-      console.log(`✅ Apiary ${id} deleted successfully! Removing from state...`);
-  
-      // 🔥 Immediately update the state to remove the deleted apiary
-      setApiaries((prevApiaries) => prevApiaries.filter(apiary => apiary.id !== id));
-  
-      alert('Apiary deleted successfully!');
+      // Refetch to update state
+      const fetchResponse = await axios.get('http://localhost:3001/apiaries');
+      setApiaries(fetchResponse.data);
     } catch (err) {
+      // Handle network or server errors
       console.error('❌ Error deleting apiary:', err);
-      alert(`Failed to delete apiary: ${err.response ? err.response.data.error : err.message}`);
+      const errorMessage = err.response ? err.response.data.error : err.message;
+      if (err.response?.status === 404) {
+        console.log(`✅ Apiary ${id} not found, treating as success`);
+        alert('Apiary deleted successfully!');
+      } else {
+        alert(`Failed to delete apiary: ${errorMessage}`);
+      }
+  
+      // Refetch even on error to ensure consistency
+      try {
+        const fetchResponse = await axios.get('http://localhost:3001/apiaries');
+        setApiaries(fetchResponse.data);
+      } catch (fetchErr) {
+        console.error('❌ Error fetching apiaries after deletion attempt:', fetchErr);
+      }
     }
   };
-  
   
   
   
@@ -426,14 +472,30 @@ function App() {
               </table>
 
               <h3 className="text-lg font-medium">Apiaries</h3>
-              {apiaries.map((apiary) => (
-                <div key={apiary.id} className="flex justify-between items-center bg-gray-100 p-2 rounded">
-                <span>{apiary.name || 'Unnamed Apiary'} - Postcode: {apiary.postcode || 'Not set'}</span>
-                <button onClick={() => deleteApiary(apiary.id)} className="bg-red-500 text-white px-2 py-1 rounded">
-                  Delete
-                  </button>
-                </div>
-              ))}
+{apiaries.map((apiary) => (
+  <div key={apiary.id} className="flex justify-between items-center bg-gray-100 p-2 rounded space-x-2">
+    <input
+      type="text"
+      value={apiary.name || ''}
+      onChange={(e) => updateApiary(apiary.id, e.target.value, apiary.postcode)}
+      className="flex-1 border rounded p-2"
+      placeholder="Apiary name"
+    />
+    <input
+      type="text"
+      value={apiary.postcode || ''}
+      onChange={(e) => updateApiary(apiary.id, apiary.name, e.target.value)}
+      className="flex-1 border rounded p-2"
+      placeholder="Postcode"
+    />
+    <button
+      onClick={() => deleteApiary(apiary.id)}
+      className="bg-red-500 text-white px-2 py-1 rounded"
+    >
+      Delete
+    </button>
+  </div>
+))}
             </div>
           )}
 

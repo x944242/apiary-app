@@ -272,13 +272,9 @@ app.delete('/apiaries/:id', async (req, res) => {
       return res.status(500).json({ error: 'Failed to delete apiary' });
     }
 
-    if (!data || data.length === 0) {
-      console.log('⚠️ Apiary not found:', id);
-      return res.status(404).json({ error: 'Apiary not found' });
-    }
-
-    console.log(`✅ Apiary deleted successfully:`, data);
-    res.json({ message: 'Apiary deleted successfully' });
+    // Always return success, even if no rows were deleted (idempotent)
+    console.log(`✅ Apiary ${id} deleted successfully or already gone:`, data);
+    res.status(200).json({ message: 'Apiary deleted successfully' });
   } catch (err) {
     console.error('❌ Error deleting apiary:', err);
     res.status(500).json({ error: 'Internal server error' });
@@ -338,6 +334,38 @@ app.get('/debug', (req, res) => {
   res.send('Debugging route working!');
 });
 
+
+// Add this new endpoint after other routes but before the server start
+app.put('/apiaries/:id', async (req, res) => {
+  const { id } = req.params;
+  const { name, postcode } = req.body;
+
+  try {
+    console.log(`📝 Attempting to update apiary ID: ${id} with`, { name, postcode });
+
+    const { data, error } = await supabase
+      .from('apiaries')
+      .update({ name: name || null, postcode: postcode || null })
+      .eq('id', id)
+      .select();
+
+    if (error) {
+      console.error('❌ Error updating apiary:', error);
+      return res.status(500).json({ error: 'Failed to update apiary' });
+    }
+
+    if (!data || data.length === 0) {
+      console.log('⚠️ Apiary not found:', id);
+      return res.status(404).json({ error: 'Apiary not found' });
+    }
+
+    console.log(`✅ Apiary updated successfully:`, data);
+    res.json(data[0]);
+  } catch (err) {
+    console.error('❌ Unexpected error updating apiary:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
 // ✅ Start Server
 const PORT = 3001;
 app.listen(PORT, () => console.log(`✅ Server running on http://localhost:${PORT}`));
