@@ -38,7 +38,6 @@ function App() {
     fetchApiaries();
   }, []);
 
-
   useEffect(() => {
     const fetchHives = async () => {
       try {
@@ -77,7 +76,7 @@ function App() {
     .sort((a, b) => {
       if (a.apiary_id && !b.apiary_id) return -1;
       if (!a.apiary_id && b.apiary_id) return 1;
-      return a.id - b.id; // Sort by id instead of hive_number
+      return a.id - b.id;
     });
 
   console.log('🔥 Updated apiaryHives:', apiaryHives);
@@ -131,7 +130,6 @@ function App() {
     const name = prompt(namePrompt);
     const postcode = prompt('Enter postcode (optional):');
 
-    // Allow adding even if name is empty for the first apiary
     if (apiaries.length > 0 && !name) {
       console.log('⚠️ Name required for additional apiaries');
       alert('Name is required when adding additional apiaries.');
@@ -180,7 +178,6 @@ function App() {
     try {
       const response = await axios.delete(`http://localhost:3001/apiaries/${id}`);
 
-      // Check if the response indicates success or a tolerable error
       if (response.status === 200 || (response.data && response.data.error === 'Apiary not found')) {
         console.log(`✅ Apiary ${id} deleted successfully or already gone!`);
         alert('Apiary deleted successfully!');
@@ -189,11 +186,9 @@ function App() {
         alert(`Failed: ${response.data.error}`);
       }
 
-      // Refetch to update state
       const fetchResponse = await axios.get('http://localhost:3001/apiaries');
       setApiaries(fetchResponse.data);
     } catch (err) {
-      // Handle network or server errors
       console.error('❌ Error deleting apiary:', err);
       const errorMessage = err.response ? err.response.data.error : err.message;
       if (err.response?.status === 404) {
@@ -203,7 +198,6 @@ function App() {
         alert(`Failed to delete apiary: ${errorMessage}`);
       }
 
-      // Refetch even on error to ensure consistency
       try {
         const fetchResponse = await axios.get('http://localhost:3001/apiaries');
         setApiaries(fetchResponse.data);
@@ -213,19 +207,20 @@ function App() {
     }
   };
 
-
-
-
   const deleteHive = async (hiveId) => {
     const confirmDelete = window.confirm('Are you sure you want to delete this hive?');
     if (!confirmDelete) return;
 
     try {
       await axios.delete(`http://localhost:3001/hives/${hiveId}`);
-      //setHives(hives.filter((hive) => hive.id !== hiveId));  // REMOVE - this causes issues
-
-      const response = await axios.get('http://localhost:3001/hives'); // FORCE A REFRESH OF ALL HIVES
+      const response = await axios.get('http://localhost:3001/hives');
       setHives(response.data);
+
+      if (selectedHive && selectedHive.id === hiveId) {
+        setSelectedHive(null);
+        setLatestInspection(null);
+        setShowInspectionForm(false);
+      }
 
       alert('Hive deleted successfully!');
     } catch (err) {
@@ -237,17 +232,25 @@ function App() {
   const sortedHives = [...hives].sort((a, b) => {
     if (a.apiary_id && !b.apiary_id) return -1;
     if (!a.apiary_id && b.apiary_id) return 1;
-    return a.id - b.id; // Sort by id instead of hive_number
+    return a.id - b.id;
   });
 
-  const handleHiveClick = (hive) => {
+  const handleHiveClick = async (hive) => {
     console.log('🖱️ Hive clicked:', hive);
     setSelectedHive(hive);
 
-    const latest = inspections
-      .filter((i) => i.hive_id === hive.id)
-      .sort((a, b) => new Date(b.inspection_date) - new Date(a.inspection_date))[0];
-    setLatestInspection(latest || null);
+    try {
+      const res = await axios.get('http://localhost:3001/hive_inspections');
+      setInspections(res.data);
+
+      const latest = res.data
+        .filter((i) => i.hive_id === hive.id)
+        .sort((a, b) => new Date(b.inspection_date) - new Date(a.inspection_date))[0];
+      setLatestInspection(latest || null);
+    } catch (err) {
+      console.error('❌ Error fetching inspections for hive:', err);
+    }
+
     setShowInspectionForm(true);
   };
 
@@ -282,10 +285,8 @@ function App() {
     setSelectedApiary(e.target.value);
     setSelectedHive(null);
     setLatestInspection(null);
+    setShowInspectionForm(false);
   };
-
-  console.log('selectedApiary:', selectedApiary);
-  console.log('apiaryHives:', apiaryHives);
 
   return (
     <div className="min-h-screen bg-gray-100 flex flex-col">
@@ -317,117 +318,118 @@ function App() {
 
       <div className="flex-grow p-6">
         <div className="max-w-4xl mx-auto bg-white rounded-lg shadow-lg p-6 space-y-6">
-        {activeTab === 'inspection-dashboard' && (
-  <div className="space-y-6">
-    <h2 className="text-xl font-semibold text-gray-700">Apiary</h2>
-    <select
-      value={selectedApiary}
-      onChange={handleApiaryChange}
-      className="p-2 border rounded"
-    >
-      {apiaries.map((apiary) => (
-        <option key={apiary.id} value={apiary.name}>
-          {apiary.name}
-        </option>
-      ))}
-    </select>
-    <div className="bg-gray-100 p-4 rounded">
-      <h3 className="text-lg font-medium">Hives in {selectedApiary}</h3>
-      <div className="flex flex-wrap gap-4 mt-2">
-        {apiaryHives.map((hive) => {
-          console.log('🐝 Rendering Hive:', hive);
-
-          const latestInspectionForHive = inspections
-            .filter((i) => i.hive_id === hive.id)
-            .sort((a, b) => new Date(b.inspection_date) - new Date(a.inspection_date))[0];
-
-          const actions = latestInspectionForHive?.next_inspection_needs
-            ? latestInspectionForHive.next_inspection_needs.split('\n')
-            : ['None'];
-
-          return (
-            <div
-              key={hive.id}
-              className={`bg-white p-3 rounded shadow w-48 cursor-pointer hover:bg-amber-100 ${
-                selectedHive?.id === hive.id ? 'border-2 border-amber-500' : ''
-              }`}
-              onClick={() => handleHiveClick(hive)}
-            >
-              <p className="font-semibold">
-                Hive {hive.id} "{hive.name || 'Unnamed'}"
-              </p>
-              <p className="text-sm text-gray-600">
-                <strong>Actions:</strong>
-                {actions.map((action, index) => (
-                  <span key={index} className="block">{action}</span>
+          {activeTab === 'inspection-dashboard' && (
+            <div className="space-y-6">
+              <h2 className="text-xl font-semibold text-gray-700">Apiary</h2>
+              <select
+                value={selectedApiary}
+                onChange={handleApiaryChange}
+                className="p-2 border rounded"
+              >
+                {apiaries.map((apiary) => (
+                  <option key={apiary.id} value={apiary.name}>
+                    {apiary.name}
+                  </option>
                 ))}
-              </p>
-            </div>
-          );
-        })}
-      </div>
+              </select>
+              <div className="bg-gray-100 p-4 rounded">
+                <h3 className="text-lg font-medium">Hives in {selectedApiary}</h3>
+                <div className="flex flex-wrap gap-4 mt-2">
+                  {apiaryHives.map((hive) => {
+                    console.log('🐝 Rendering Hive:', hive);
 
-      {/* Conditional rendering for selectedHive and latestInspection */}
-      {selectedHive && latestInspection && (
-                    <div className="mt-4">
-                        <div className="md:flex md:items-start gap-4">
-                            {/* Flex container for inline display */}
-                            <div className="bg-gray-100 p-4 rounded-md shadow-md flex-grow">
-                                <h3 className="text-lg font-semibold text-gray-800">
-                                    Latest Inspection for Hive {selectedHive.id}
-                                </h3>
-                                <p><strong>Date:</strong> {latestInspection.inspection_date}</p>
-                                <p><strong>Queen Status:</strong> {latestInspection.queen_status?.queen_seen ? 'Seen' : 'Not Seen'}</p>
-                                <p><strong>Egg Laying:</strong> {latestInspection.queen_status?.egg_laying || 'N/A'}</p>
-                                <p><strong>Brood Pattern:</strong> {latestInspection.brood_presence?.brood_pattern || 'N/A'}</p>
-                            </div>
+                    const latestInspectionForHive = inspections
+                      .filter((i) => i.hive_id === hive.id)
+                      .sort((a, b) => new Date(b.inspection_date) - new Date(a.inspection_date))[0];
 
-                            <div className="bg-gray-100 p-4 rounded-md shadow-md flex-grow">
-                                <p><strong>Notes:</strong> {latestInspection.queen_status?.notes || latestInspection.brood_presence?.notes || 'None'}</p>
-                                <p><strong>Follow-Up Actions:</strong></p>
-                                <ul className="list-disc ml-6">
-                                  {latestInspection.next_inspection_needs
-                                    ? latestInspection.next_inspection_needs.split('\n').map((action, index) => (
-                                      <li key={index}>{action}</li>
-                                    ))
-                                    : <li>No actions</li>
-                                  }
+                    const actions = latestInspectionForHive?.next_inspection_needs
+                      ? latestInspectionForHive.next_inspection_needs.split('\n')
+                      : ['None'];
 
-                                </ul>
-                            </div>
-                        </div>
-                         {/* Display Completed Actions */}
-                         {latestInspection.completed_actions && (
-                            <div className="bg-green-100 p-4 rounded-md shadow-md mt-4">
-                                <h4 className="text-md font-semibold text-gray-800">Completed Actions</h4>
-                                <ul className="list-disc ml-6">
-                                    {JSON.parse(latestInspection.completed_actions).map((action, index) => (
-                                        <li key={index}>{action.text} (Completed at: {new Date(action.completed_at).toLocaleString()})</li>
-                                    ))}
-                                </ul>
-                            </div>
-                        )}
+                    return (
+                      <div
+                        key={hive.id}
+                        className={`bg-white p-3 rounded shadow w-48 cursor-pointer hover:bg-amber-100 ${
+                          selectedHive?.id === hive.id ? 'border-2 border-amber-500' : ''
+                        }`}
+                        onClick={() => handleHiveClick(hive)}
+                      >
+                        <p className="font-semibold">
+                          Hive {hive.id} "{hive.name || 'Unnamed'}"
+                        </p>
+                        <p className="text-sm text-gray-600">
+                          <strong>Actions:</strong>
+                          {actions.map((action, index) => (
+                            <span key={index} className="block">{action}</span>
+                          ))}
+                        </p>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Conditional rendering for selectedHive and latestInspection */}
+                {selectedHive && latestInspection && (
+                  <div className="mt-4">
+                    <div className="md:flex md:items-start gap-4">
+                      <div className="bg-gray-100 p-4 rounded-md shadow-md flex-grow">
+                        <h3 className="text-lg font-semibold text-gray-800">
+                          Latest Inspection for Hive {selectedHive.id}
+                        </h3>
+                        <p><strong>Date:</strong> {latestInspection.inspection_date}</p>
+                        <p><strong>Queen Seen:</strong> {latestInspection.queen_status?.queen_seen ? 'Yes' : 'No'}</p>
+                        <p><strong>Egg Laying:</strong> {latestInspection.queen_status?.egg_laying || 'N/A'}</p>
+                        <p><strong>Eggs Present:</strong> {latestInspection.brood_presence?.eggs_present ? 'Yes' : 'No'}</p>
+                        <p><strong>Brood Pattern:</strong> {latestInspection.brood_presence?.brood_pattern || 'N/A'}</p>
+                        <p><strong>Bee Coverage:</strong> {latestInspection.colony_strength?.bee_coverage || 'N/A'}</p>
+                        <p><strong>Queenright Status:</strong> {latestInspection.colony_strength?.queenright_status || 'N/A'}</p>
+                      </div>
+                      <div className="bg-gray-100 p-4 rounded-md shadow-md flex-grow">
+                        <p><strong>Queen Notes:</strong> {latestInspection.queen_status?.notes || 'None'}</p>
+                        <p><strong>Brood Notes:</strong> {latestInspection.brood_presence?.notes || 'None'}</p>
+                        <p><strong>Colony Notes:</strong> {latestInspection.colony_strength?.notes || 'None'}</p>
+                        <p><strong>Follow-Up Actions:</strong></p>
+                        <ul className="list-disc ml-6">
+                          {latestInspection.next_inspection_needs
+                            ? latestInspection.next_inspection_needs.split('\n').map((action, index) => (
+                              <li key={index}>{action}</li>
+                            ))
+                            : <li>No actions</li>
+                          }
+                        </ul>
+                      </div>
                     </div>
+                    {latestInspection.completed_actions && (
+                      <div className="bg-green-100 p-4 rounded-md shadow-md mt-4">
+                        <h4 className="text-md font-semibold text-gray-800">Completed Actions</h4>
+                        <ul className="list-disc ml-6">
+                          {JSON.parse(latestInspection.completed_actions).map((action, index) => (
+                            <li key={index}>{action.text} (Completed at: {new Date(action.completed_at).toLocaleString()})</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
                 )}
-    </div>
+              </div>
 
-    <button
-      onClick={() => setShowInspectionForm(!showInspectionForm)}
-      className="w-full p-3 bg-amber-500 text-white rounded-md hover:bg-amber-600 transition-colors duration-200 font-medium"
-    >
-      {showInspectionForm ? 'Hide Add New Inspection' : 'Add New Inspection'}
-    </button>
-    {showInspectionForm && (
-      <InspectionForm
-        onInspectionSaved={handleInspectionSaved}
-        selectedApiary={selectedApiary}
-        apiaryHives={apiaryHives}
-        selectedHive={selectedHive}
-        hives={hives}
-      />
-    )}
-  </div>
-)}
+              <button
+                onClick={() => setShowInspectionForm(!showInspectionForm)}
+                className="w-full p-3 bg-amber-500 text-white rounded-md hover:bg-amber-600 transition-colors duration-200 font-medium"
+              >
+                {showInspectionForm ? 'Hide Add New Inspection' : 'Add New Inspection'}
+              </button>
+              {showInspectionForm && (
+                <InspectionForm
+                  onInspectionSaved={handleInspectionSaved}
+                  selectedApiary={selectedApiary}
+                  apiaryHives={apiaryHives}
+                  selectedHive={selectedHive}
+                  hives={hives}
+                />
+              )}
+            </div>
+          )}
 
           {activeTab === 'apiary' && (
             <div className="space-y-6">
@@ -455,16 +457,16 @@ function App() {
                       <td className="border p-2">
                         <input
                           type="text"
-                          value={hive.name}
-                          onChange={(e) => updateHive(hive.id, e.target.value, undefined, hive.hive_type)}
-                          className="border rounded p-2 w-full"
+                          defaultValue={hive.name || ''}
+                          onBlur={(e) => updateHive(hive.id, e.target.value, undefined, undefined)}
+                          className="w-full p-1 border rounded"
                         />
                       </td>
                       <td className="border p-2">
                         <select
-                          value={hive.hive_type || ''}
-                          onChange={(e) => updateHive(hive.id, hive.name, undefined, e.target.value)}
-                          className="border rounded p-2"
+                          defaultValue={hive.hive_type || 'Langstroth'}
+                          onChange={(e) => updateHive(hive.id, undefined, undefined, e.target.value)}
+                          className="w-full p-1 border rounded"
                         >
                           <option value="Langstroth">Langstroth</option>
                           <option value="Warre">Warre</option>
@@ -473,11 +475,13 @@ function App() {
                       </td>
                       <td className="border p-2">
                         <select
-                          value={hive.apiary_id ? apiaries.find((a) => a.id === hive.apiary_id)?.name || '' : ''}
-                          onChange={(e) => updateHive(hive.id, hive.name, e.target.value, hive.hive_type)}
+                          value={
+                            apiaries.find((a) => a.id === hive.apiary_id)?.name || 'Unassigned'
+                          }
+                          onChange={(e) => updateHive(hive.id, undefined, e.target.value, undefined)}
                           className="w-full p-1 border rounded"
                         >
-                          <option value="">Unassigned</option>
+                          <option value="Unassigned">Unassigned</option>
                           {apiaries.map((apiary) => (
                             <option key={apiary.id} value={apiary.name}>
                               {apiary.name}
@@ -488,7 +492,7 @@ function App() {
                       <td className="border p-2">
                         <button
                           onClick={() => deleteHive(hive.id)}
-                          className="bg-red-500 text-white px-2 py-1 rounded hover:bg-red-700 transition-colors"
+                          className="bg-red-500 text-white px-2 py-1 rounded"
                         >
                           Delete
                         </button>
@@ -498,39 +502,65 @@ function App() {
                 </tbody>
               </table>
 
-              <h3 className="text-lg font-medium">Apiaries</h3>
-              {apiaries.map((apiary) => (
-                <div key={apiary.id} className="flex justify-between items-center bg-gray-100 p-2 rounded space-x-2">
-                  <input
-                    type="text"
-                    value={apiary.name || ''}
-                    onChange={(e) => updateApiary(apiary.id, e.target.value, apiary.postcode)}
-                    className="flex-1 border rounded p-2"
-                    placeholder="Apiary name"
-                  />
-                  <input
-                    type="text"
-                    value={apiary.postcode || ''}
-                    onChange={(e) => updateApiary(apiary.id, apiary.name, e.target.value)}
-                    className="flex-1 border rounded p-2"
-                    placeholder="Postcode"
-                  />
-                  <button
-                    onClick={() => deleteApiary(apiary.id)}
-                    className="bg-red-500 text-white px-2 py-1 rounded"
-                  >
-                    Delete
-                  </button>
-                </div>
-              ))}
+              <h2 className="text-xl font-semibold text-gray-700 mt-6">Apiaries</h2>
+              <table className="w-full border-collapse">
+                <thead>
+                  <tr className="bg-gray-200">
+                    <th className="border p-2">Apiary ID</th>
+                    <th className="border p-2">Name</th>
+                    <th className="border p-2">Postcode</th>
+                    <th className="border p-2">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {apiaries.map((apiary) => (
+                    <tr key={apiary.id}>
+                      <td className="border p-2">{apiary.id}</td>
+                      <td className="border p-2">
+                        <input
+                          type="text"
+                          defaultValue={apiary.name || ''}
+                          onBlur={(e) => updateApiary(apiary.id, e.target.value, undefined)}
+                          className="w-full p-1 border rounded"
+                        />
+                      </td>
+                      <td className="border p-2">
+                        <input
+                          type="text"
+                          defaultValue={apiary.postcode || ''}
+                          onBlur={(e) => updateApiary(apiary.id, undefined, e.target.value)}
+                          className="w-full p-1 border rounded"
+                        />
+                      </td>
+                      <td className="border p-2">
+                        <button
+                          onClick={() => deleteApiary(apiary.id)}
+                          className="bg-red-500 text-white px-2 py-1 rounded"
+                        >
+                          Delete
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           )}
 
           {activeTab === 'overview' && (
             <div className="space-y-6">
               <h2 className="text-xl font-semibold text-gray-700">Overview</h2>
-              <div className="bg-white p-4 rounded-md shadow-sm">
+              <div className="bg-gray-100 p-4 rounded">
                 <Bar data={getHiveChartData()} options={chartOptions} />
+              </div>
+              <div className="space-y-4">
+                {apiaries.map((apiary) => (
+                  <div key={apiary.id} className="bg-gray-50 p-4 rounded shadow">
+                    <h3 className="text-lg font-medium">{apiary.name}</h3>
+                    <p><strong>Postcode:</strong> {apiary.postcode || 'N/A'}</p>
+                    <p><strong>Hives:</strong> {hives.filter((hive) => hive.apiary_id === apiary.id).length}</p>
+                  </div>
+                ))}
               </div>
             </div>
           )}
