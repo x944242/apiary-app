@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 
-function InspectionForm({ onInspectionSaved, selectedApiary, selectedHive, hives }) {
+function InspectionForm({ onInspectionSaved, selectedApiary, selectedHive, setSelectedHive, hives, fetchHiveActions }) {
   // Initial form state with all fields
   const [formData, setFormData] = useState({
     date: new Date().toISOString().split('T')[0],
@@ -79,6 +79,8 @@ function InspectionForm({ onInspectionSaved, selectedApiary, selectedHive, hives
     }
   }, [selectedHive]);
 
+
+  
   // Reset form when selected hive changes
   useEffect(() => {
     setFormData({
@@ -151,15 +153,14 @@ function InspectionForm({ onInspectionSaved, selectedApiary, selectedHive, hives
   // Handle form submission
   const handleSubmit = async (e) => {
     e.preventDefault();
-
+  
     if (!selectedHive || !selectedHive.id) {
       alert('❌ Error: You must select a hive before submitting an inspection.');
       return;
     }
-
+  
     const hive_id = selectedHive.id;
-
-    // Prepare inspection payload
+  
     const payload = {
       hive_id,
       inspection_date: formData.date,
@@ -187,23 +188,30 @@ function InspectionForm({ onInspectionSaved, selectedApiary, selectedHive, hives
       queen_clipped: formData.queen_clipped || false,
       egg_laying: formData.egg_laying || null,
       queen_cells: formData.queen_cells || null,
+      running_on_frames: formData.running_on_frames || false,
+      following_behavior: formData.following_behavior || false,
+      stinging_tendency: formData.stinging_tendency || '',
+      buzzing_sound: formData.buzzing_sound || '',
+      honey_stores: formData.honey_stores || '',
+      pollen_stores: formData.pollen_stores || '',
+      feeding_type: formData.feeding_type || '',
+      disease_check: formData.disease_check || '',
       notes: formData.notes || null,
     };
-
+  
     try {
-      // Save inspection and get inspection ID
       const response = await axios.post('http://localhost:3001/hive_inspections', payload);
       const inspectionId = response.data.id;
-
-      // Update completed outstanding actions
+  
+      // Mark completed actions as done in the database
       const completedActions = outstandingActions.filter((a) => a.checked);
       await Promise.all(
         completedActions.map((action) =>
           axios.put(`http://localhost:3001/hive_actions/${action.id}`, { completed: true })
         )
       );
-
-      // Add new actions
+  
+      // Add new actions to the database
       const newActionsToAdd = formData.actions.filter((a) => a.text.trim());
       await Promise.all(
         newActionsToAdd.map((action) =>
@@ -215,8 +223,14 @@ function InspectionForm({ onInspectionSaved, selectedApiary, selectedHive, hives
           })
         )
       );
-
-      // Reset form
+  
+  
+ // **Step 4: Fetch updated Hive Box actions** ✅
+// **Step 4: Fetch updated Hive Box actions** ✅
+console.log("Fetching updated Hive Box actions for hive:", hive_id);
+await fetchHiveActions(hive_id);
+console.log("Hive Box actions updated successfully.");
+      // Reset form fields but keep the selected apiary
       setFormData({
         date: new Date().toISOString().split('T')[0],
         general_behavior: '',
@@ -254,15 +268,22 @@ function InspectionForm({ onInspectionSaved, selectedApiary, selectedHive, hives
         actions: [],
         notes: '',
       });
-      setOutstandingActions([]);
-
-      // Notify parent component
+  
+      // Remove completed actions from outstanding list
+      setOutstandingActions((prev) => prev.filter((action) => !action.checked));
+  
       if (onInspectionSaved) onInspectionSaved();
+  
+      // Reset selected hive (hides the form)
+      setSelectedHive(null);
     } catch (err) {
       console.error('Error saving inspection:', err);
       alert('Failed to save inspection');
     }
   };
+  
+  
+  
 
   // Toggle collapsible sections
   const toggleSection = (section) => {
@@ -754,71 +775,76 @@ function InspectionForm({ onInspectionSaved, selectedApiary, selectedHive, hives
           )}
         </div>
 
-        {/* Actions and Notes Section */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Actions Section */}
-          <div className="border rounded-md p-4 bg-white shadow-sm">
-            <h3 className="text-lg font-medium text-amber-600">Actions 📋</h3>
-            <div className="mt-2 space-y-2">
-              <h4 className="text-md font-medium text-gray-700">Outstanding Actions</h4>
-              {outstandingActions.map((action, index) => (
-                <div key={action.id} className="flex items-center">
-                  <input
-                    type="checkbox"
-                    checked={action.checked}
-                    onChange={(e) => handleOutstandingActionChange(index, e.target.checked)}
-                    className="mr-2"
-                  />
-                  <input
-                    type="text"
-                    value={action.text}
-                    className="w-full p-2 border border-gray-300 rounded-md bg-gray-100"
-                    disabled
-                  />
-                </div>
-              ))}
-              <h4 className="text-md font-medium text-gray-700 mt-4">Add New Actions</h4>
-              {formData.actions.map((action, index) => (
-                <div key={index} className="flex items-center">
-                  <input
-                    type="checkbox"
-                    checked={action.checked}
-                    onChange={(e) => handleActionChange(index, 'checked', e.target.checked)}
-                    className="mr-2"
-                  />
-                  <input
-                    type="text"
-                    value={action.text}
-                    onChange={(e) => handleActionChange(index, 'text', e.target.value)}
-                    className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-amber-400"
-                    placeholder="Enter action"
-                  />
-                </div>
-              ))}
-              <button
-                type="button"
-                onClick={addAction}
-                className="mt-2 p-2 bg-green-500 text-white rounded-md hover:bg-green-600"
-              >
-                Add Action
-              </button>
-            </div>
-          </div>
+      {/* Actions and Notes Section */}
+{/* Actions and Notes Section */}
+<div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+  {/* Actions Section */}
+  <div className="border rounded-md p-4 bg-white shadow-sm">
+    <h3 className="text-lg font-medium text-amber-600">Actions 📋</h3>
 
-          {/* Notes Section */}
-          <div className="border rounded-md p-4 bg-white shadow-sm">
-            <h3 className="text-lg font-medium text-amber-600">Notes ✍️</h3>
-            <div className="mt-2">
-              <textarea
-                name="notes"
-                value={formData.notes}
-                onChange={handleChange}
-                placeholder="Enter inspection notes"
-                className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-amber-400 min-h-[150px]"
-              />
-            </div>
-          </div>
+    {/* List of Previously Added Actions */}
+    <div className="mt-2 space-y-2">
+      {outstandingActions.map((action, index) => (
+        <div key={action.id} className="flex items-center">
+          <input
+            type="checkbox"
+            checked={action.checked}
+            onChange={(e) => handleOutstandingActionChange(index, e.target.checked)}
+            className="mr-2"
+          />
+          <span className={`w-full p-2 ${action.checked ? 'line-through text-gray-400' : ''}`}>
+            {action.text}
+          </span>
         </div>
+      ))}
+    </div>
+
+    {/* New Actions List */}
+    <div className="mt-4 space-y-2">
+      {formData.actions.map((action, index) => (
+        <div key={index} className="flex items-center">
+          <input
+            type="text"
+            value={action.text}
+            onChange={(e) => handleActionChange(index, 'text', e.target.value)}
+            placeholder="Enter New Action"
+            className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-amber-400"
+          />
+          <input
+            type="checkbox"
+            checked={action.checked}
+            onChange={(e) => handleActionChange(index, 'checked', e.target.checked)}
+            className="ml-2"
+          />
+        </div>
+      ))}
+    </div>
+
+    {/* Add Action Button */}
+    <button
+      type="button"
+      onClick={addAction}
+      className="mt-2 p-2 bg-green-500 text-white rounded-md hover:bg-green-600"
+    >
+      Add Action
+    </button>
+  </div>
+
+  {/* Notes Section */}
+  <div className="border rounded-md p-4 bg-white shadow-sm">
+    <h3 className="text-lg font-medium text-amber-600">Notes ✍️</h3>
+    <div className="mt-2">
+      <textarea
+        name="notes"
+        value={formData.notes}
+        onChange={handleChange}
+        placeholder="Enter inspection notes"
+        className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-amber-400 min-h-[150px]"
+      />
+    </div>
+  </div>
+</div>
+
 
         {/* Submit Button */}
         <button

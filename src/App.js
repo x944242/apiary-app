@@ -24,6 +24,8 @@ function App() {
   const [selectedHive, setSelectedHive] = useState(null);
   const [latestInspection, setLatestInspection] = useState(null);
   const [actionsForHives, setActionsForHives] = useState({}); // New state for actions
+  const [hiveActions, setHiveActions] = useState([]); // ✅ Add this line
+
 
   // Fetch apiaries on mount
   useEffect(() => {
@@ -52,6 +54,32 @@ function App() {
     fetchHives();
   }, []);
 
+  const fetchHiveActions = async (hiveId) => {
+    if (!hiveId) return; // Prevent invalid requests
+  
+    try {
+      console.log(`Fetching Hive Box actions ONLY for Hive ${hiveId}...`);
+  
+      const response = await axios.get(`http://localhost:3001/hive_actions`, {
+        params: { hive_id: hiveId, completed: false },
+      });
+  
+      console.log(`✅ Fetched actions for Hive ${hiveId}:`, response.data);
+  
+      // ✅ Ensure we update only the relevant Hive Box
+      setActionsForHives((prev) => ({
+        ...prev,
+        [hiveId]: response.data, // ✅ Update only this Hive's actions
+      }));
+  
+    } catch (err) {
+      console.error(`❌ Error fetching Hive Box actions for Hive ${hiveId}:`, err);
+    }
+  };
+  
+  
+  
+
   // Fetch actions for all hives when hives change
   useEffect(() => {
     const fetchActionsForAllHives = async () => {
@@ -74,22 +102,31 @@ function App() {
 
   // Handle inspection save and refresh inspections
   const handleInspectionSaved = async () => {
+    if (!selectedHive) return; // Ensure a hive is selected
+  
     try {
+      const hiveId = selectedHive.id; // ✅ Store hive ID before resetting
+  
+      console.log(`Fetching updated actions only for Hive ${hiveId}...`);
+      await fetchHiveActions(hiveId); // ✅ Ensure only this Hive Box refreshes
+  
+      setSelectedHive(null); // ✅ Reset AFTER fetching updated actions
+  
       const res = await axios.get('http://localhost:3001/hive_inspections');
       setInspections(res.data);
-
-      if (selectedHive) {
-        const latest = res.data
-          .filter((i) => i.hive_id === selectedHive.id)
-          .sort((a, b) => new Date(b.inspection_date) - new Date(a.inspection_date))[0];
-        setLatestInspection(latest || null);
-      }
-      console.log('🔄 Inspections updated after save:', res.data);
+  
+      const latest = res.data
+        .filter((i) => i.hive_id === hiveId)
+        .sort((a, b) => new Date(b.inspection_date) - new Date(a.inspection_date))[0];
+  
+      setLatestInspection(latest || null);
     } catch (err) {
       console.error('❌ Error fetching inspections after save:', err);
     }
   };
-
+  
+  
+  
   // Filter and sort hives by selected apiary
   const apiaryHives = hives
     .filter((hive) => {
@@ -371,10 +408,11 @@ function App() {
                   {apiaryHives.map((hive) => {
                     console.log('🐝 Rendering Hive:', hive);
 
-                    const actionsForHive = actionsForHives[hive.id] || [];
+                    const actionsForHive = actionsForHives[hive.id] || []; // ✅ Show only this Hive's actions
                     const actions = actionsForHive.length > 0
                       ? actionsForHive.map((action) => action.action_text)
                       : ['None'];
+                    
 
                     return (
                       <div
@@ -439,14 +477,14 @@ function App() {
                 {showInspectionForm ? 'Hide Add New Inspection' : 'Add New Inspection'}
               </button>
               {showInspectionForm && (
-                <InspectionForm
-                  onInspectionSaved={handleInspectionSaved}
-                  selectedApiary={selectedApiary}
-                  apiaryHives={apiaryHives}
-                  selectedHive={selectedHive}
-                  hives={hives}
-                  latestInspection={latestInspection}
-                />
+             <InspectionForm
+             onInspectionSaved={handleInspectionSaved}
+             selectedApiary={selectedApiary}
+             selectedHive={selectedHive}
+             setSelectedHive={setSelectedHive}
+             hives={hives}
+             fetchHiveActions={fetchHiveActions} // Pass fetch function
+           />
               )}
             </div>
           )}
