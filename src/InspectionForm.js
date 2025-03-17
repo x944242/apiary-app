@@ -41,6 +41,9 @@ function InspectionForm({ onInspectionSaved, selectedApiary, selectedHive, setSe
     notes: '',
   });
 
+  const API_BASE_URL = process.env.REACT_APP_SUPABASE_URL;
+
+
   // State for outstanding actions fetched from the server
   const [outstandingActions, setOutstandingActions] = useState([]);
 
@@ -58,7 +61,7 @@ function InspectionForm({ onInspectionSaved, selectedApiary, selectedHive, setSe
     if (selectedHive) {
       const fetchOutstandingActions = async () => {
         try {
-          const response = await axios.get('${API_BASE_URL}/hive_actions', {
+          const response = await axios.get(`${API_BASE_URL}/hive_actions`, {
             params: { hive_id: selectedHive.id, completed: false },
           });
           setOutstandingActions(
@@ -200,7 +203,7 @@ function InspectionForm({ onInspectionSaved, selectedApiary, selectedHive, setSe
     };
   
     try {
-      const response = await axios.post('${API_BASE_URL}/hive_inspections', payload);
+      const response = await axios.post(`${API_BASE_URL}/hive_inspections`, payload);
       const inspectionId = response.data.id;
   
       // Mark completed actions as done in the database
@@ -215,7 +218,7 @@ function InspectionForm({ onInspectionSaved, selectedApiary, selectedHive, setSe
       const newActionsToAdd = formData.actions.filter((a) => a.text.trim());
       await Promise.all(
         newActionsToAdd.map((action) =>
-          axios.post('${API_BASE_URL}/hive_actions', {
+          axios.post(`${API_BASE_URL}/hive_actions`, {
             hive_id,
             action_text: action.text,
             inspection_id: inspectionId,

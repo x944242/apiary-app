@@ -12,6 +12,9 @@ import {
   Legend,
 } from 'chart.js';
 
+
+const API_BASE_URL = process.env.REACT_APP_SUPABASE_URL;
+
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
 
 function App() {
@@ -228,12 +231,12 @@ function App() {
       });
 
       const fetchResponse = await axios.get(`${API_BASE_URL}/apiaries`);
-      setApiaries(response.data);
+      setApiaries(fetchResponse.data);  // ✅ Corrected variable name
       console.log('✅ Apiary updated successfully');
     } catch (err) {
       console.error('❌ Error updating apiary:', err);
     }
-  };
+  };  
 
   // Delete an apiary
   const deleteApiary = async (id) => {
