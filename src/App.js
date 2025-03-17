@@ -30,8 +30,7 @@ function App() {
   // Fetch apiaries on mount
   useEffect(() => {
     const fetchApiaries = async () => {
-      try {
-        const response = await axios.get('http://localhost:3001/apiaries');
+      try {  const response = await axios.get(`${API_BASE_URL}/apiaries`);
         console.log('✅ Fetched latest apiary data:', response.data);
         setApiaries(response.data);
       } catch (err) {
@@ -45,7 +44,7 @@ function App() {
   useEffect(() => {
     const fetchHives = async () => {
       try {
-        const response = await axios.get('http://localhost:3001/hives');
+        const response = await axios.get(`${API_BASE_URL}/hives`);
         setHives(response.data);
       } catch (err) {
         console.error('Error fetching hives:', err);
@@ -60,7 +59,7 @@ function App() {
     try {
       console.log(`Fetching Hive Box actions ONLY for Hive ${hiveId}...`);
   
-      const response = await axios.get(`http://localhost:3001/hive_actions`, {
+      const response = await axios.get(`${API_BASE_URL}/hive_actions`, {
         params: { hive_id: hiveId, completed: false },
       });
   
@@ -86,7 +85,7 @@ function App() {
       const actionsByHive = {};
       for (const hive of hives) {
         try {
-          const res = await axios.get('http://localhost:3001/hive_actions', {
+          const res = await axios.get(`${API_BASE_URL}/hive_actions`, {
             params: { hive_id: hive.id, completed: false },
           });
           actionsByHive[hive.id] = res.data;
@@ -112,7 +111,7 @@ function App() {
   
       setSelectedHive(null); // ✅ Reset AFTER fetching updated actions
   
-      const res = await axios.get('http://localhost:3001/hive_inspections');
+      const res = await axios.get(`${API_BASE_URL}/hive_inspections`);
       setInspections(res.data);
   
       const latest = res.data
@@ -161,13 +160,13 @@ function App() {
 
       console.log('📤 Updating hive:', { hiveId, updatedName, apiary_id, updatedHiveType });
 
-      await axios.put(`http://localhost:3001/hives/${hiveId}`, {
+      await axios.put(`${API_BASE_URL}/hives/${hiveId}`, {
         name: updatedName,
         apiary_id,
         hive_type: updatedHiveType,
       });
 
-      const response = await axios.get('http://localhost:3001/hives');
+      const response = await axios.get(`${API_BASE_URL}/hives`);
       setHives(response.data);
       console.log('✅ Hive updated successfully');
     } catch (err) {
@@ -180,7 +179,7 @@ function App() {
     const name = prompt('Enter hive name (optional):');
     const type = prompt('Enter hive type (Langstroth, Warre, Top Bar):') || 'Langstroth';
     try {
-      const response = await axios.post('http://localhost:3001/hives', { name, type, currentApiary: null });
+      const response = await axios.post(`${API_BASE_URL}/hives`, { name, type, currentApiary: null });
       setHives([...hives, response.data]);
     } catch (err) {
       console.error('Error adding hive:', err);
@@ -201,7 +200,7 @@ function App() {
 
     console.log('📤 Attempting to add apiary:', { name, postcode });
     try {
-      const response = await axios.post('http://localhost:3001/apiaries', { name, postcode });
+      const response = await axios.post(`${API_BASE_URL}/apiaries`, { name, postcode });
       console.log('✅ Apiary added:', response.data);
       setApiaries([...apiaries, response.data]);
     } catch (err) {
@@ -223,12 +222,12 @@ function App() {
 
       console.log('📤 Updating apiary:', { apiaryId, updatedName, updatedPostcode });
 
-      await axios.put(`http://localhost:3001/apiaries/${apiaryId}`, {
+      await axios.put(`${API_BASE_URL}/apiaries/${apiaryId}`, {
         name: updatedName,
         postcode: updatedPostcode,
       });
 
-      const response = await axios.get('http://localhost:3001/apiaries');
+      const fetchResponse = await axios.get(`${API_BASE_URL}/apiaries`);
       setApiaries(response.data);
       console.log('✅ Apiary updated successfully');
     } catch (err) {
@@ -241,7 +240,7 @@ function App() {
     console.log(`🧐 Attempting to delete apiary with ID:`, id);
 
     try {
-      const response = await axios.delete(`http://localhost:3001/apiaries/${id}`);
+      const response = await axios.delete(`${API_BASE_URL}/apiaries/${id}`);
 
       if (response.status === 200 || (response.data && response.data.error === 'Apiary not found')) {
         console.log(`✅ Apiary ${id} deleted successfully or already gone!`);
@@ -251,7 +250,7 @@ function App() {
         alert(`Failed: ${response.data.error}`);
       }
 
-      const fetchResponse = await axios.get('http://localhost:3001/apiaries');
+      const fetchResponse = await axios.get(`${API_BASE_URL}/apiaries`);
       setApiaries(fetchResponse.data);
     } catch (err) {
       console.error('❌ Error deleting apiary:', err);
@@ -264,7 +263,7 @@ function App() {
       }
 
       try {
-        const fetchResponse = await axios.get('http://localhost:3001/apiaries');
+        const fetchResponse = await axios.get(`${API_BASE_URL}/apiaries`);
         setApiaries(fetchResponse.data);
       } catch (fetchErr) {
         console.error('❌ Error fetching apiaries after deletion attempt:', fetchErr);
@@ -278,8 +277,8 @@ function App() {
     if (!confirmDelete) return;
 
     try {
-      await axios.delete(`http://localhost:3001/hives/${hiveId}`);
-      const response = await axios.get('http://localhost:3001/hives');
+      await axios.delete(`${API_BASE_URL}/hives/${hiveId}`);
+      const response = await axios.get(`${API_BASE_URL}/hives`);
       setHives(response.data);
 
       if (selectedHive && selectedHive.id === hiveId) {
@@ -308,7 +307,7 @@ function App() {
     setSelectedHive(hive);
 
     try {
-      const res = await axios.get('http://localhost:3001/hive_inspections');
+      const res = await axios.get(`${API_BASE_URL}/hive_inspections`);
       setInspections(res.data);
 
       const latest = res.data
