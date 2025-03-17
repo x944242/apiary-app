@@ -23,7 +23,9 @@ function App() {
   const [showInspectionForm, setShowInspectionForm] = useState(false);
   const [selectedHive, setSelectedHive] = useState(null);
   const [latestInspection, setLatestInspection] = useState(null);
+  const [actionsForHives, setActionsForHives] = useState({}); // New state for actions
 
+  // Fetch apiaries on mount
   useEffect(() => {
     const fetchApiaries = async () => {
       try {
@@ -34,10 +36,10 @@ function App() {
         console.error('❌ Error fetching apiaries:', err);
       }
     };
-
     fetchApiaries();
   }, []);
 
+  // Fetch hives on mount
   useEffect(() => {
     const fetchHives = async () => {
       try {
@@ -50,6 +52,27 @@ function App() {
     fetchHives();
   }, []);
 
+  // Fetch actions for all hives when hives change
+  useEffect(() => {
+    const fetchActionsForAllHives = async () => {
+      const actionsByHive = {};
+      for (const hive of hives) {
+        try {
+          const res = await axios.get('http://localhost:3001/hive_actions', {
+            params: { hive_id: hive.id, completed: false },
+          });
+          actionsByHive[hive.id] = res.data;
+        } catch (err) {
+          console.error(`Error fetching actions for hive ${hive.id}:`, err);
+          actionsByHive[hive.id] = [];
+        }
+      }
+      setActionsForHives(actionsByHive);
+    };
+    if (hives.length > 0) fetchActionsForAllHives();
+  }, [hives]);
+
+  // Handle inspection save and refresh inspections
   const handleInspectionSaved = async () => {
     try {
       const res = await axios.get('http://localhost:3001/hive_inspections');
@@ -61,13 +84,13 @@ function App() {
           .sort((a, b) => new Date(b.inspection_date) - new Date(a.inspection_date))[0];
         setLatestInspection(latest || null);
       }
-
       console.log('🔄 Inspections updated after save:', res.data);
     } catch (err) {
       console.error('❌ Error fetching inspections after save:', err);
     }
   };
 
+  // Filter and sort hives by selected apiary
   const apiaryHives = hives
     .filter((hive) => {
       const matchingApiary = apiaries.find((apiary) => apiary.name === selectedApiary);
@@ -81,6 +104,7 @@ function App() {
 
   console.log('🔥 Updated apiaryHives:', apiaryHives);
 
+  // Update hive details
   const updateHive = async (hiveId, newName, newApiaryName, newHiveType) => {
     try {
       const hive = hives.find((h) => h.id === hiveId);
@@ -114,6 +138,7 @@ function App() {
     }
   };
 
+  // Add a new hive
   const addHive = async () => {
     const name = prompt('Enter hive name (optional):');
     const type = prompt('Enter hive type (Langstroth, Warre, Top Bar):') || 'Langstroth';
@@ -125,6 +150,7 @@ function App() {
     }
   };
 
+  // Add a new apiary
   const addApiary = async () => {
     const namePrompt = apiaries.length === 0 ? 'Enter apiary name (optional for first apiary):' : 'Enter apiary name:';
     const name = prompt(namePrompt);
@@ -146,6 +172,7 @@ function App() {
     }
   };
 
+  // Update apiary details
   const updateApiary = async (apiaryId, newName, newPostcode) => {
     try {
       const apiary = apiaries.find((a) => a.id === apiaryId);
@@ -172,6 +199,7 @@ function App() {
     }
   };
 
+  // Delete an apiary
   const deleteApiary = async (id) => {
     console.log(`🧐 Attempting to delete apiary with ID:`, id);
 
@@ -207,6 +235,7 @@ function App() {
     }
   };
 
+  // Delete a hive
   const deleteHive = async (hiveId) => {
     const confirmDelete = window.confirm('Are you sure you want to delete this hive?');
     if (!confirmDelete) return;
@@ -229,12 +258,14 @@ function App() {
     }
   };
 
+  // Sort hives for display
   const sortedHives = [...hives].sort((a, b) => {
     if (a.apiary_id && !b.apiary_id) return -1;
     if (!a.apiary_id && b.apiary_id) return 1;
     return a.id - b.id;
   });
 
+  // Handle hive selection
   const handleHiveClick = async (hive) => {
     console.log('🖱️ Hive clicked:', hive);
     setSelectedHive(hive);
@@ -254,6 +285,7 @@ function App() {
     setShowInspectionForm(true);
   };
 
+  // Generate chart data for hive distribution
   const getHiveChartData = () => {
     const hiveCounts = apiaries.map((apiary) => ({
       name: apiary.name,
@@ -281,6 +313,7 @@ function App() {
     },
   };
 
+  // Handle apiary selection change
   const handleApiaryChange = (e) => {
     setSelectedApiary(e.target.value);
     setSelectedHive(null);
@@ -338,12 +371,9 @@ function App() {
                   {apiaryHives.map((hive) => {
                     console.log('🐝 Rendering Hive:', hive);
 
-                    const latestInspectionForHive = inspections
-                      .filter((i) => i.hive_id === hive.id)
-                      .sort((a, b) => new Date(b.inspection_date) - new Date(a.inspection_date))[0];
-
-                    const actions = latestInspectionForHive?.next_inspection_needs
-                      ? latestInspectionForHive.next_inspection_needs.split('\n')
+                    const actionsForHive = actionsForHives[hive.id] || [];
+                    const actions = actionsForHive.length > 0
+                      ? actionsForHive.map((action) => action.action_text)
                       : ['None'];
 
                     return (
@@ -368,7 +398,7 @@ function App() {
                   })}
                 </div>
 
-                {/* Conditional rendering for selectedHive and latestInspection */}
+                {/* Display latest inspection for selected hive */}
                 {selectedHive && latestInspection && (
                   <div className="mt-4">
                     <div className="md:flex md:items-start gap-4">
@@ -385,18 +415,7 @@ function App() {
                         <p><strong>Queenright Status:</strong> {latestInspection.colony_strength?.queenright_status || 'N/A'}</p>
                       </div>
                       <div className="bg-gray-100 p-4 rounded-md shadow-md flex-grow">
-                        <p><strong>Queen Notes:</strong> {latestInspection.queen_status?.notes || 'None'}</p>
-                        <p><strong>Brood Notes:</strong> {latestInspection.brood_presence?.notes || 'None'}</p>
-                        <p><strong>Colony Notes:</strong> {latestInspection.colony_strength?.notes || 'None'}</p>
-                        <p><strong>Follow-Up Actions:</strong></p>
-                        <ul className="list-disc ml-6">
-                          {latestInspection.next_inspection_needs
-                            ? latestInspection.next_inspection_needs.split('\n').map((action, index) => (
-                              <li key={index}>{action}</li>
-                            ))
-                            : <li>No actions</li>
-                          }
-                        </ul>
+                        <p><strong>Notes:</strong> {latestInspection.notes || 'None'}</p>
                       </div>
                     </div>
                     {latestInspection.completed_actions && (
@@ -426,6 +445,7 @@ function App() {
                   apiaryHives={apiaryHives}
                   selectedHive={selectedHive}
                   hives={hives}
+                  latestInspection={latestInspection}
                 />
               )}
             </div>
