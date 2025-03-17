@@ -58,7 +58,7 @@ function InspectionForm({ onInspectionSaved, selectedApiary, selectedHive, setSe
     if (selectedHive) {
       const fetchOutstandingActions = async () => {
         try {
-          const response = await axios.get('http://localhost:3001/hive_actions', {
+          const response = await axios.get('${API_BASE_URL}/hive_actions', {
             params: { hive_id: selectedHive.id, completed: false },
           });
           setOutstandingActions(
@@ -200,14 +200,14 @@ function InspectionForm({ onInspectionSaved, selectedApiary, selectedHive, setSe
     };
   
     try {
-      const response = await axios.post('http://localhost:3001/hive_inspections', payload);
+      const response = await axios.post('${API_BASE_URL}/hive_inspections', payload);
       const inspectionId = response.data.id;
   
       // Mark completed actions as done in the database
       const completedActions = outstandingActions.filter((a) => a.checked);
       await Promise.all(
         completedActions.map((action) =>
-          axios.put(`http://localhost:3001/hive_actions/${action.id}`, { completed: true })
+          axios.put(`${API_BASE_URL}/hive_actions/${action.id}`, { completed: true })
         )
       );
   
@@ -215,7 +215,7 @@ function InspectionForm({ onInspectionSaved, selectedApiary, selectedHive, setSe
       const newActionsToAdd = formData.actions.filter((a) => a.text.trim());
       await Promise.all(
         newActionsToAdd.map((action) =>
-          axios.post('http://localhost:3001/hive_actions', {
+          axios.post('${API_BASE_URL}/hive_actions', {
             hive_id,
             action_text: action.text,
             inspection_id: inspectionId,
