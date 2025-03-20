@@ -13,9 +13,13 @@ import {
 } from 'chart.js';
 
 
-const API_BASE_URL = process.env.REACT_APP_SUPABASE_URL;
+const API_BASE_URL =
+  process.env.NODE_ENV === "production"
+    ? "" // On Vercel, use relative path (e.g., /api/apiaries)
+    : "http://localhost:3001"; // For local testing
 
-ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
+
+    ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
 
 function App() {
   const [inspections, setInspections] = useState([]);

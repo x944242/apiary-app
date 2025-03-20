@@ -41,8 +41,10 @@ function InspectionForm({ onInspectionSaved, selectedApiary, selectedHive, setSe
     notes: '',
   });
 
-  const API_BASE_URL = process.env.REACT_APP_SUPABASE_URL;
-
+  const API_BASE_URL =
+  process.env.NODE_ENV === "production"
+    ? "" // On Vercel, use relative path (e.g., /api/apiaries)
+    : "http://localhost:3001"; // For local testing
 
   // State for outstanding actions fetched from the server
   const [outstandingActions, setOutstandingActions] = useState([]);
