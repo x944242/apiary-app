@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 
+
+
 function InspectionForm({ onInspectionSaved, selectedApiary, selectedHive, setSelectedHive, hives, fetchHiveActions }) {
   // Initial form state with all fields
   const [formData, setFormData] = useState({
@@ -82,7 +84,7 @@ function InspectionForm({ onInspectionSaved, selectedApiary, selectedHive, setSe
     } else {
       setOutstandingActions([]);
     }
-  }, [selectedHive]);
+  }, [selectedHive, API_BASE_URL]);
 
 
   
@@ -125,7 +127,7 @@ function InspectionForm({ onInspectionSaved, selectedApiary, selectedHive, setSe
       actions: [],
       notes: '',
     });
-  }, [selectedHive]);
+  }, [selectedHive, API_BASE_URL]);
 
   // Handle input changes for form fields
   const handleChange = (e) => {

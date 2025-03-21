@@ -22,7 +22,7 @@ const API_BASE_URL =
     ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
 
 function App() {
-  const [inspections, setInspections] = useState([]); 
+  const [, setInspections] = useState([]); 
   const [hives, setHives] = useState([]);
   const [apiaries, setApiaries] = useState([]);
   const [activeTab, setActiveTab] = useState('inspection-dashboard');
