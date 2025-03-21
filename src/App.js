@@ -22,7 +22,7 @@ const API_BASE_URL =
     ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
 
 function App() {
-  const [inspections, setInspections] = useState([]);
+  //const [inspections, setInspections] = useState([]); not being used=> commented out to avoid warnings
   const [hives, setHives] = useState([]);
   const [apiaries, setApiaries] = useState([]);
   const [activeTab, setActiveTab] = useState('inspection-dashboard');
@@ -31,7 +31,7 @@ function App() {
   const [selectedHive, setSelectedHive] = useState(null);
   const [latestInspection, setLatestInspection] = useState(null);
   const [actionsForHives, setActionsForHives] = useState({}); // New state for actions
-  const [hiveActions, setHiveActions] = useState([]); // ✅ Add this line
+  //const [hiveActions, setHiveActions] = useState([]); // not being used=> commented out to avoid warnings
 
 
   // Fetch apiaries on mount
