@@ -391,20 +391,7 @@ function App() {
   return (
     
     <div className="min-h-screen bg-gray-100 flex flex-col">
-      <button
-  onClick={async () => {
-    try {
-      const res = await fetch('/api/test');
-      const json = await res.json();
-      console.log("✅ /api/test response:", json);
-    } catch (err) {
-      console.error("❌ Failed to reach /api/test:", err);
-    }
-  }}
-  className="mb-4 p-2 bg-blue-600 text-white rounded hover:bg-blue-700"
->
-  🔍 Test API Route
-</button>
+     
 
       <nav className="bg-white shadow-md p-4 sticky top-0 z-10">
         <div className="max-w-4xl mx-auto flex justify-between">
