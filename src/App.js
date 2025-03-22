@@ -119,6 +119,8 @@ function App() {
       setSelectedHive(null); // ✅ Reset AFTER fetching updated actions
   
       const res = await axios.get(`${API_BASE_URL}/api/hive_inspections`);
+      console.log("🔍 Response from /hive_inspections:", res.data);
+
       setInspections(res.data);
   
       const latest = res.data
