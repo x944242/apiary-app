@@ -13,14 +13,14 @@ import {
 } from 'chart.js';
 
 
-const API_BASE_URL =
-  process.env.NODE_ENV === "production"
-    ? "" // On Vercel, use relative path (e.g., /api/apiaries)
-    : "http://localhost:3001"; // For local testing
+const API_BASE_URL = "";
+
 
 
     ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
-
+    console.log("🌍 API_BASE_URL is:", API_BASE_URL);
+    console.log("NODE_ENV is:", process.env.NODE_ENV);
+    
 function App() {
   const [, setInspections] = useState([]); 
   const [hives, setHives] = useState([]);
@@ -367,7 +367,23 @@ function App() {
   };
 
   return (
+    
     <div className="min-h-screen bg-gray-100 flex flex-col">
+      <button
+  onClick={async () => {
+    try {
+      const res = await fetch('/api/test');
+      const json = await res.json();
+      console.log("✅ /api/test response:", json);
+    } catch (err) {
+      console.error("❌ Failed to reach /api/test:", err);
+    }
+  }}
+  className="mb-4 p-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+>
+  🔍 Test API Route
+</button>
+
       <nav className="bg-white shadow-md p-4 sticky top-0 z-10">
         <div className="max-w-4xl mx-auto flex justify-between">
           <h1 className="text-2xl font-bold text-gray-800">Apiary Tracker</h1>

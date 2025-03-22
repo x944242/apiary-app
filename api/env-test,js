@@ -1,6 +1,7 @@
 export default function handler(req, res) {
-  res.json({
-    url: process.env.SUPABASE_URL,
-    key: process.env.SUPABASE_KEY ? 'present' : 'missing',
+  res.status(200).json({
+    SUPABASE_URL: process.env.SUPABASE_URL,
+    SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY ? '✅ Defined' : '❌ Undefined',
+    NODE_ENV: process.env.NODE_ENV,
   });
 }

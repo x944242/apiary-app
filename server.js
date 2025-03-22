@@ -7,13 +7,13 @@ app.use(express.json());
 
 // Debug logs for startup
 console.log('🚀 Server starting...');
-if (!process.env.SUPABASE_URL || !process.env.SUPABASE_KEY) {
+if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
   console.error('❌ Missing Supabase credentials. Check your .env file.');
   process.exit(1);
 }
 console.log('✅ SUPABASE_URL:', process.env.SUPABASE_URL);
-console.log('✅ SUPABASE_KEY:', process.env.SUPABASE_KEY.slice(0, 5) + '...');
-const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
+console.log('✅ SUPABASE_KEY:', process.env.SUPABASE_SERVICE_ROLE_KEY.slice(0, 5) + '...');
+const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
 console.log('✅ Supabase client initialized');
 
 // CORS Configuration

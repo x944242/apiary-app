@@ -43,10 +43,7 @@ function InspectionForm({ onInspectionSaved, selectedApiary, selectedHive, setSe
     notes: '',
   });
 
-  const API_BASE_URL =
-  process.env.NODE_ENV === "production"
-    ? "" // On Vercel, use relative path (e.g., /api/apiaries)
-    : "http://localhost:3001"; // For local testing
+  const API_BASE_URL = "";
 
   // State for outstanding actions fetched from the server
   const [outstandingActions, setOutstandingActions] = useState([]);
@@ -207,6 +204,8 @@ function InspectionForm({ onInspectionSaved, selectedApiary, selectedHive, setSe
     };
   
     try {
+      console.log("📤 Posting to:", `${API_BASE_URL}/api/hive_inspections`);
+
       const response = await axios.post(`${API_BASE_URL}/api/hive_inspections`, payload);
       const inspectionId = response.data.id;
   

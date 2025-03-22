@@ -1,0 +1,7 @@
+{
+    "//": "This file is only used for local development to ensure API routes resolve properly. It is ignored in production.",
+    "rewrites": [
+      { "source": "/api/(.*)", "destination": "/api/$1.js" }
+    ]
+  }
+  
