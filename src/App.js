@@ -21,10 +21,14 @@ const API_BASE_URL = "";
     console.log("🌍 API_BASE_URL is:", API_BASE_URL);
     console.log("NODE_ENV is:", process.env.NODE_ENV);
     
+
+   
+
 function App() {
   const [, setInspections] = useState([]); 
   const [hives, setHives] = useState([]);
   const [apiaries, setApiaries] = useState([]);
+  
   const [activeTab, setActiveTab] = useState('inspection-dashboard');
   const [selectedApiary, setSelectedApiary] = useState('Ratho');
   const [showInspectionForm, setShowInspectionForm] = useState(false);
@@ -33,7 +37,20 @@ function App() {
   const [actionsForHives, setActionsForHives] = useState({}); // New state for actions
   //const [hiveActions, setHiveActions] = useState([]); // not being used=> commented out to avoid warnings
 
-
+  useEffect(() => {
+    console.log("🌍 API_BASE_URL is:", API_BASE_URL);
+  
+    // Test if we can fetch from /api/test
+    axios.get(`${API_BASE_URL}/api/test`)
+      .then(res => console.log("✅ /api/test success:", res.data))
+      .catch(err => console.error("❌ /api/test failed:", err));
+  
+    // Test if we can fetch from /api/apiaries
+    axios.get(`${API_BASE_URL}/api/apiaries`)
+      .then(res => console.log("✅ /api/apiaries success:", res.data))
+      .catch(err => console.error("❌ /api/apiaries failed:", err));
+  }, []);
+  
   // Fetch apiaries on mount
   useEffect(() => {
     const fetchApiaries = async () => {
