@@ -207,7 +207,7 @@ function App() {
 
     console.log('📤 Attempting to add apiary:', { name, postcode });
     try {
-      const response = await axios.post(`${API_BASE_URL}/apiaries`, { name, postcode });
+      const response = await axios.post(`${API_BASE_URL}/api/apiaries`, { name, postcode });
       console.log('✅ Apiary added:', response.data);
       setApiaries([...apiaries, response.data]);
     } catch (err) {
@@ -314,7 +314,7 @@ function App() {
     setSelectedHive(hive);
 
     try {
-      const res = await axios.get(`${API_BASE_URL}/hive_inspections`);
+      const res = await axios.get(`${API_BASE_URL}/api/hive_inspections`);
       setInspections(res.data);
 
       const latest = res.data
