@@ -12,12 +12,17 @@ import {
   Legend,
 } from 'chart.js';
 
+ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
 
-const API_BASE_URL = "";
+const API_BASE_URL =
+  process.env.NODE_ENV === 'development'
+    ? 'http://localhost:3000'
+    : '';
 
 
 
-    ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
+
+
     console.log("🌍 API_BASE_URL is:", API_BASE_URL);
     console.log("NODE_ENV is:", process.env.NODE_ENV);
     
