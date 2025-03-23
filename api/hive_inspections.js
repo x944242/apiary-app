@@ -8,17 +8,20 @@ export default async function handler(req, res) {
       const { data, error } = await supabase
         .from('hive_inspections')
         .select('*');
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching hive inspections:', error);
+        return res.status(500).json({ error: error.message }); // * Ensure JSON response
+      }
       return res.status(200).json(data);
     } catch (err) {
       console.error('Error fetching hive inspections:', err);
-      return res.status(500).json({ error: err.message }); // * Ensure JSON response
+      return res.status(500).json({ error: 'Internal server error' }); // * More generic error
     }
   }
 
   if (req.method === 'POST') {
     const { colonyStrengthData, actions, notes, ...inspectionData } = req.body;
-    console.log('Received data:', req.body); // Log the request body
+    console.log('Received data:', req.body);
 
     try {
       // 1. Insert into hive_inspections
@@ -26,13 +29,17 @@ export default async function handler(req, res) {
         .from('hive_inspections')
         .insert([{ ...inspectionData, actions, notes }])
         .select();
-      console.log('Supabase insert result (hive_inspections):', { inspection, insertInspectionError }); // Log Supabase result
 
       if (insertInspectionError) {
-        console.error("DB Error on insertInspectionError", insertInspectionError);
+        console.error("DB Error inserting into hive_inspections", insertInspectionError);
         return res.status(500).json({ error: insertInspectionError.message });
       }
 
+      if (!inspection || inspection.length === 0) {
+        const errorMessage = "Failed to insert inspection: No data returned from insert operation.";
+        console.error(errorMessage);
+        return res.status(500).json({ error: errorMessage });
+      }
       const inspectionId = inspection[0].id;
 
       // 2. Insert into colony_strength
@@ -41,39 +48,40 @@ export default async function handler(req, res) {
           inspection_id: inspectionId,
           ...colonyStrengthData,
         };
-        const { data: colonyStrengthDataResult, error: insertStrengthError } = await supabase
+        const { data: colonyStrengthResult, error: insertStrengthError } = await supabase
           .from('colony_strength')
           .insert([colonyStrengthToInsert]);
-        console.log('Supabase insert result (colony_strength):', { colonyStrengthDataResult, insertStrengthError }); // Log Supabase result
+
         if (insertStrengthError) {
-          console.error("DB Error on insertStrengthError", insertStrengthError);
+          console.error("DB Error inserting into colony_strength", insertStrengthError);
           return res.status(500).json({ error: insertStrengthError.message });
+        }
+        if (!colonyStrengthResult || colonyStrengthResult.length === 0) {
+          console.warn("Colony strength data was provided, but the insert operation did not return any data.");
         }
       }
 
-      // 3. Update completed actions (remains the same, but ensure JSON on error)
+      // 3. Update completed actions
       if (req.body.completed_action_ids && req.body.completed_action_ids.length > 0) {
         const { error: updateError } = await supabase
           .from('hive_actions')
           .update({ completed: true, completed_at: new Date().toISOString() })
           .in('id', req.body.completed_action_ids);
         if (updateError) {
-          console.error("DB Error on updateError", updateError);
+          console.error("DB Error updating hive_actions", updateError);
           return res.status(500).json({ error: updateError.message });
         }
       }
 
-      // * Ensure JSON response
-      const responseData = { id: inspectionId, ...inspection[0] };
+      const responseData = inspection[0];
       console.log('Response data:', responseData);
       return res.status(201).json(responseData);
     } catch (err) {
       console.error('Error saving inspection data:', err);
-      return res.status(500).json({ error: err.message }); // * Ensure JSON response
+      return res.status(500).json({ error: 'Internal server error' }); // * More generic error
     }
   }
 
-  // * Ensure JSON response for all paths
   console.log("Received data:", req.body);
-  return res.status(405).json({ error: 'Method not allowed' }); // * Ensure JSON response
+  return res.status(405).json({ error: 'Method not allowed' });
 }
