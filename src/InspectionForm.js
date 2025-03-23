@@ -155,123 +155,42 @@ function InspectionForm({ onInspectionSaved, selectedApiary, selectedHive, setSe
     });
   };
 
-  // Handle form submission
   const handleSubmit = async (e) => {
     e.preventDefault();
   
-    if (!selectedHive || !selectedHive.id) {
-      alert('❌ Error: You must select a hive before submitting an inspection.');
-      return;
+    if (!selectedHive) {
+      alert('Please select a hive before saving the inspection.');
+      return; // Stop if no hive is selected
     }
   
-    const hive_id = selectedHive.id;
+    const colonyStrengthData = {
+      hive_id: selectedHive.id, // Include the hive_id
+      bee_coverage: formData.bee_coverage,
+      brood_frames: formData.brood_frames,
+      drone_population: formData.drone_population,
+      queenright_status: formData.queenright_status,
+    };
   
-    // Filter completed actions from outstanding actions
-    const completedActions = outstandingActions.filter((a) => a.checked);
-  
-    // Prepare the inspection payload, including completed_action_ids
-    const payload = {
-      hive_id,
-      inspection_date: formData.date,
-      general_behavior: formData.general_behavior || null,
-      flight_activity: formData.flight_activity || null,
-      population_growth: formData.population_growth || null,
-      forager_activity: formData.forager_activity || null,
-      supering_needed: formData.supering_needed || false,
-      feeding_required: formData.feeding_required || false,
-      status: formData.status || null,
-      is_deleted: formData.is_deleted || false,
-      eggs_present: formData.eggs_present || false,
-      larvae_present: formData.larvae_present || false,
-      larvae_stage: formData.larvae_stage || null,
-      sealed_brood: formData.sealed_brood || false,
-      brood_pattern: formData.brood_pattern || null,
-      drone_brood: formData.drone_brood || 0,
-      bee_coverage: formData.bee_coverage || 0,
-      brood_frames: formData.brood_frames || 0,
-      drone_population: formData.drone_population || null,
-      queenright_status: formData.queenright_status || null,
-      queen_seen: formData.queen_seen || false,
-      queen_marked: formData.queen_marked || false,
-      queen_mark_color: formData.queen_mark_color || null,
-      queen_clipped: formData.queen_clipped || false,
-      egg_laying: formData.egg_laying || null,
-      queen_cells: formData.queen_cells || null,
-      running_on_frames: formData.running_on_frames || false,
-      following_behavior: formData.following_behavior || false,
-      stinging_tendency: formData.stinging_tendency || '',
-      buzzing_sound: formData.buzzing_sound || '',
-      honey_stores: formData.honey_stores || '',
-      pollen_stores: formData.pollen_stores || '',
-      feeding_type: formData.feeding_type || '',
-      disease_check: formData.disease_check || '',
-      notes: formData.notes || null,
-      completed_action_ids: completedActions.map((action) => action.id), // Add completed action IDs
+    const inspectionData = {
+      ...formData,
+      colonyStrengthData,
+      actions: formData.actions, // Include actions
+      notes: formData.notes,     // Include notes
     };
   
     try {
-      console.log("📤 Posting to:", `${API_BASE_URL}/api/hive_inspections`);
-      const response = await axios.post(`${API_BASE_URL}/api/hive_inspections`, payload);
-      const inspectionId = response.data.id; // Assuming the server returns the new inspection ID
-  
-      // Add new actions to the database
-      const newActionsToAdd = formData.actions.filter((a) => a.text.trim());
-      if (newActionsToAdd.length > 0) {
-        await Promise.all(
-          newActionsToAdd.map((action) =>
-            axios.post(`${API_BASE_URL}/api/hive_actions`, {
-              hive_id,
-              action_text: action.text,
-              inspection_id: inspectionId,
-              completed: action.checked,
-            })
-          )
-        );
-      }
-  
-      // Fetch updated hive actions
-      console.log("Fetching updated Hive Box actions for hive:", hive_id);
-      await fetchHiveActions(hive_id);
-      console.log("Hive Box actions updated successfully.");
-  
-      // Reset form fields but keep the selected apiary
-      setFormData({
-        date: new Date().toISOString().split('T')[0],
-        general_behavior: '',
-        flight_activity: '',
-        population_growth: '',
-        forager_activity: '',
-        supering_needed: false,
-        feeding_required: false,
-        status: '',
-        is_deleted: false,
-        eggs_present: false,
-        larvae_present: false,
-        larvae_stage: '',
-        sealed_brood: false,
-        brood_pattern: '',
-        drone_brood: 0,
-        bee_coverage: 0,
-        brood_frames: 0,
-        drone_population: '',
-        queenright_status: '',
-        queen_seen: false,
-        queen_marked: false,
-        queen_mark_color: '',
-        queen_clipped: false,
-        egg_laying: '',
-        queen_cells: '',
-        running_on_frames: false,
-        following_behavior: false,
-        stinging_tendency: '',
-        buzzing_sound: '',
-        honey_stores: '',
-        pollen_stores: '',
-        feeding_type: '',
-        disease_check: '',
-        actions: [],
-        notes: '',
+      const response = await fetch('/api/hive-inspection', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(inspectionData), // Send all form data
       });
+  
+      if (!response.ok) {
+        const errorData = await response.json(); // Attempt to get error message
+        throw new Error(errorData.message || 'Failed to save inspection');
+      }
   
       // Remove completed actions from outstanding list
       setOutstandingActions((prev) => prev.filter((action) => !action.checked));
@@ -282,9 +201,10 @@ function InspectionForm({ onInspectionSaved, selectedApiary, selectedHive, setSe
       setSelectedHive(null);
     } catch (err) {
       console.error('Error saving inspection:', err);
-      alert('Failed to save inspection');
+      alert('Failed to save inspection: ' + err.message); // Show user the error
     }
   };
+  
   
   
   
@@ -593,7 +513,8 @@ function InspectionForm({ onInspectionSaved, selectedApiary, selectedHive, setSe
         </div>
 
         {/* Colony Strength Section */}
-        <div className="border rounded-md p-4 bg-white shadow-sm">
+                {/* Colony Strength Section */}
+                <div className="border rounded-md p-4 bg-white shadow-sm">
           <button
             type="button"
             onClick={() => toggleSection('colonyStrength')}
@@ -626,34 +547,6 @@ function InspectionForm({ onInspectionSaved, selectedApiary, selectedHive, setSe
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-600 mb-1">Population Growth 📊</label>
-                <select
-                  name="population_growth"
-                  value={formData.population_growth}
-                  onChange={handleChange}
-                  className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-amber-400"
-                >
-                  <option value="">Select Growth</option>
-                  <option value="Increasing">Increasing</option>
-                  <option value="Stable">Stable</option>
-                  <option value="Decreasing">Decreasing</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-600 mb-1">Forager Activity 🍃</label>
-                <select
-                  name="forager_activity"
-                  value={formData.forager_activity}
-                  onChange={handleChange}
-                  className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-amber-400"
-                >
-                  <option value="">Select Activity</option>
-                  <option value="Low">Low</option>
-                  <option value="Moderate">Moderate</option>
-                  <option value="High">High</option>
-                </select>
-              </div>
-              <div>
                 <label className="block text-sm font-medium text-gray-600 mb-2">Drone Population 👑</label>
                 <select
                   name="drone_population"
@@ -684,6 +577,7 @@ function InspectionForm({ onInspectionSaved, selectedApiary, selectedHive, setSe
             </div>
           )}
         </div>
+
 
         {/* Resources & Health Section */}
         <div className="border rounded-md p-4 bg-white shadow-sm">

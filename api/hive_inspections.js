@@ -12,38 +12,63 @@ export default async function handler(req, res) {
       return res.status(200).json(data);
     } catch (err) {
       console.error('Error fetching hive inspections:', err);
-      return res.status(500).json({ error: err.message });
+      return res.status(500).json({ error: err.message }); // * Ensure JSON response
     }
   }
 
   if (req.method === 'POST') {
-    const { completed_action_ids, ...inspectionData } = req.body;
+    const { colonyStrengthData, actions, notes, ...inspectionData } = req.body;
+
     try {
-      // Insert the inspection into the database
-      const { data: inspection, error: insertError } = await supabase
+      // 1. Insert into hive_inspections
+      const { data: inspection, error: insertInspectionError } = await supabase
         .from('hive_inspections')
-        .insert([inspectionData])
+        .insert([{ ...inspectionData, actions, notes }])
         .select();
-      if (insertError) throw insertError;
+      if (insertInspectionError) {
+        console.error("DB Error on insertInspectionError", insertInspectionError);
+        return res.status(500).json({ error: insertInspectionError.message });
+      }
+
 
       const inspectionId = inspection[0].id;
 
-      // Update completed actions if any are provided
-      if (completed_action_ids && completed_action_ids.length > 0) {
+      // 2. Insert into colony_strength
+      if (colonyStrengthData) {
+        const colonyStrengthToInsert = {
+          inspection_id: inspectionId,
+          ...colonyStrengthData,
+        };
+        const { error: insertStrengthError } = await supabase
+          .from('colony_strength')
+          .insert([colonyStrengthToInsert]);
+        if (insertStrengthError) {
+          console.error("DB Error on insertStrengthError", insertStrengthError);
+          return res.status(500).json({ error: insertStrengthError.message });
+        }
+      }
+
+      // 3. Update completed actions (remains the same, but ensure JSON on error)
+      if (req.body.completed_action_ids && req.body.completed_action_ids.length > 0) {
         const { error: updateError } = await supabase
           .from('hive_actions')
           .update({ completed: true, completed_at: new Date().toISOString() })
-          .in('id', completed_action_ids);
-        if (updateError) throw updateError;
+          .in('id', req.body.completed_action_ids);
+        if (updateError) {
+          console.error("DB Error on updateError", updateError);
+          return res.status(500).json({ error: updateError.message });
+        }
       }
 
+      // * Ensure JSON response
       return res.status(201).json({ id: inspectionId, ...inspection[0] });
     } catch (err) {
-      console.error('Error saving inspection:', err);
-      return res.status(500).json({ error: err.message });
+      console.error('Error saving inspection data:', err);
+      return res.status(500).json({ error: err.message }); // * Ensure JSON response
     }
   }
 
+  // * Ensure JSON response for all paths
   console.log("Received data:", req.body);
-  return res.status(405).json({ error: 'Method not allowed' });
+  return res.status(405).json({ error: 'Method not allowed' }); // * Ensure JSON response
 }
