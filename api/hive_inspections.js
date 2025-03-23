@@ -7,7 +7,7 @@ export default async function handler(req, res) {
     try {
       const { data, error } = await supabase
         .from('hive_inspections')
-        .select('*'); // Or filter if needed
+        .select('*');
       if (error) throw error;
       return res.status(200).json(data);
     } catch (err) {
@@ -17,8 +17,31 @@ export default async function handler(req, res) {
   }
 
   if (req.method === 'POST') {
-    console.log("📥 Received inspection data:", req.body);
-    return res.status(200).json({ message: 'Mock: Inspection saved successfully' });
+    const { completed_action_ids, ...inspectionData } = req.body;
+    try {
+      // Insert the inspection into the database
+      const { data: inspection, error: insertError } = await supabase
+        .from('hive_inspections')
+        .insert([inspectionData])
+        .select();
+      if (insertError) throw insertError;
+
+      const inspectionId = inspection[0].id;
+
+      // Update completed actions if any are provided
+      if (completed_action_ids && completed_action_ids.length > 0) {
+        const { error: updateError } = await supabase
+          .from('hive_actions')
+          .update({ completed: true, completed_at: new Date().toISOString() })
+          .in('id', completed_action_ids);
+        if (updateError) throw updateError;
+      }
+
+      return res.status(201).json({ id: inspectionId, ...inspection[0] });
+    } catch (err) {
+      console.error('Error saving inspection:', err);
+      return res.status(500).json({ error: err.message });
+    }
   }
 
   return res.status(405).json({ error: 'Method not allowed' });

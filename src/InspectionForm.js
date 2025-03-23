@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 
-
+// Configure Axios to include credentials (cookies) with requests
+axios.defaults.withCredentials = true;
 
 function InspectionForm({ onInspectionSaved, selectedApiary, selectedHive, setSelectedHive, hives, fetchHiveActions }) {
   // Initial form state with all fields
@@ -165,6 +166,10 @@ function InspectionForm({ onInspectionSaved, selectedApiary, selectedHive, setSe
   
     const hive_id = selectedHive.id;
   
+    // Filter completed actions from outstanding actions
+    const completedActions = outstandingActions.filter((a) => a.checked);
+  
+    // Prepare the inspection payload, including completed_action_ids
     const payload = {
       hive_id,
       inspection_date: formData.date,
@@ -201,41 +206,34 @@ function InspectionForm({ onInspectionSaved, selectedApiary, selectedHive, setSe
       feeding_type: formData.feeding_type || '',
       disease_check: formData.disease_check || '',
       notes: formData.notes || null,
+      completed_action_ids: completedActions.map((action) => action.id), // Add completed action IDs
     };
   
     try {
       console.log("📤 Posting to:", `${API_BASE_URL}/api/hive_inspections`);
-
       const response = await axios.post(`${API_BASE_URL}/api/hive_inspections`, payload);
-      const inspectionId = response.data.id;
-  
-      // Mark completed actions as done in the database
-      const completedActions = outstandingActions.filter((a) => a.checked);
-      await Promise.all(
-        completedActions.map((action) =>
-          axios.put(`${API_BASE_URL}/api/hive_actions/${action.id}`, { completed: true })
-        )
-      );
+      const inspectionId = response.data.id; // Assuming the server returns the new inspection ID
   
       // Add new actions to the database
       const newActionsToAdd = formData.actions.filter((a) => a.text.trim());
-      await Promise.all(
-        newActionsToAdd.map((action) =>
-          axios.post(`${API_BASE_URL}/api/hive_actions`, {
-            hive_id,
-            action_text: action.text,
-            inspection_id: inspectionId,
-            completed: action.checked,
-          })
-        )
-      );
+      if (newActionsToAdd.length > 0) {
+        await Promise.all(
+          newActionsToAdd.map((action) =>
+            axios.post(`${API_BASE_URL}/api/hive_actions`, {
+              hive_id,
+              action_text: action.text,
+              inspection_id: inspectionId,
+              completed: action.checked,
+            })
+          )
+        );
+      }
   
+      // Fetch updated hive actions
+      console.log("Fetching updated Hive Box actions for hive:", hive_id);
+      await fetchHiveActions(hive_id);
+      console.log("Hive Box actions updated successfully.");
   
- // **Step 4: Fetch updated Hive Box actions** ✅
-// **Step 4: Fetch updated Hive Box actions** ✅
-console.log("Fetching updated Hive Box actions for hive:", hive_id);
-await fetchHiveActions(hive_id);
-console.log("Hive Box actions updated successfully.");
       // Reset form fields but keep the selected apiary
       setFormData({
         date: new Date().toISOString().split('T')[0],
