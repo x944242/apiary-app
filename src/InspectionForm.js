@@ -179,7 +179,7 @@ function InspectionForm({ onInspectionSaved, selectedApiary, selectedHive, setSe
     };
   
     try {
-      const response = await fetch('/api/hive-inspection', {
+      const response = await fetch('/api/hive_inspections', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
