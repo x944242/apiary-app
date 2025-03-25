@@ -162,7 +162,7 @@ function InspectionForm({ onInspectionSaved, selectedApiary, selectedHive, setSe
       alert('Please select a hive before saving the inspection.');
       return; // Stop if no hive is selected
     }
-    const colonyStrengthFields = ['bee_coverage', 'brood_frames', 'drone_population', 'queenright_status', 'brood_pattern'];
+    const colonyStrengthFields = ['bee_coverage', 'brood_frames', 'drone_population', 'queenright_status', 'brood_pattern', 'buzzing sound'];
     const colonyStrengthData = {
       hive_id: selectedHive.id,
     };
