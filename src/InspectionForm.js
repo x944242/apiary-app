@@ -163,30 +163,41 @@ function InspectionForm({ onInspectionSaved, selectedApiary, selectedHive, setSe
       return;
     }
   
-    // Extract and remove colony strength data
+    const hive_id = selectedHive.id;
+  
+    // Colony Strength
     const colonyStrengthFields = ['bee_coverage', 'brood_frames', 'drone_population', 'queenright_status', 'brood_pattern', 'buzzing_sound'];
-    const colonyStrengthData = { hive_id: selectedHive.id };
+    const colonyStrengthData = { hive_id };
     colonyStrengthFields.forEach((field) => {
       colonyStrengthData[field] = formData[field];
       delete formData[field];
     });
   
-    // Extract and remove queen status data
+    // Queen Status
     const queenStatusFields = ['queen_seen', 'queen_marked', 'queen_mark_color', 'queen_clipped', 'egg_laying'];
-    const queenStatusData = { hive_id: selectedHive.id };
+    const queenStatusData = { hive_id };
     queenStatusFields.forEach((field) => {
       queenStatusData[field] = formData[field];
       delete formData[field];
     });
   
-    // Construct payload
+    // Brood Presence (eggs, larvae, sealed brood)
+    const broodPresenceFields = ['eggs_present', 'larvae_present', 'larvae_stage', 'sealed_brood'];
+    const broodPresenceData = { hive_id };
+    broodPresenceFields.forEach((field) => {
+      broodPresenceData[field] = formData[field];
+      delete formData[field];
+    });
+  
+    // Main inspection payload
     const inspectionData = {
       ...formData,
+      hive_id,
       colonyStrengthData,
       queenStatusData,
+      broodPresenceData,
       actions: formData.actions,
       notes: formData.notes,
-      hive_id: selectedHive.id,
     };
   
     console.log('🐞 Submitting inspection data:', inspectionData);
@@ -194,7 +205,9 @@ function InspectionForm({ onInspectionSaved, selectedApiary, selectedHive, setSe
     try {
       const response = await fetch('/api/hive_inspections', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+        },
         body: JSON.stringify(inspectionData),
       });
   
@@ -212,7 +225,7 @@ function InspectionForm({ onInspectionSaved, selectedApiary, selectedHive, setSe
         }
       }
   
-      console.log('✅ Inspection saved successfully.');
+      console.log('✅ Inspection saved successfully');
       setOutstandingActions((prev) => prev.filter((action) => !action.checked));
       if (onInspectionSaved) onInspectionSaved();
       setSelectedHive(null);
@@ -221,6 +234,7 @@ function InspectionForm({ onInspectionSaved, selectedApiary, selectedHive, setSe
       alert('Failed to save inspection: ' + err.message);
     }
   };
+  
   
   
   
