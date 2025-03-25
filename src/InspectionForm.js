@@ -189,6 +189,8 @@ function InspectionForm({ onInspectionSaved, selectedApiary, selectedHive, setSe
       hive_id: selectedHive.id,
     };
   
+    console.log('🐞 Submitting inspection data:', inspectionData);
+  
     try {
       const response = await fetch('/api/hive_inspections', {
         method: 'POST',
@@ -196,19 +198,30 @@ function InspectionForm({ onInspectionSaved, selectedApiary, selectedHive, setSe
         body: JSON.stringify(inspectionData),
       });
   
+      const responseText = await response.text();
+  
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to save inspection');
+        console.error('❌ Server responded with status:', response.status);
+        console.error('❌ Raw response text:', responseText);
+  
+        try {
+          const errorData = JSON.parse(responseText);
+          throw new Error(errorData.message || 'Failed to save inspection');
+        } catch (jsonErr) {
+          throw new Error('Failed to save inspection (non-JSON response)');
+        }
       }
   
+      console.log('✅ Inspection saved successfully.');
       setOutstandingActions((prev) => prev.filter((action) => !action.checked));
       if (onInspectionSaved) onInspectionSaved();
-      setSelectedHive(null); // Reset selected hive
+      setSelectedHive(null);
     } catch (err) {
-      console.error('Error saving inspection:', err);
+      console.error('🔥 Exception during save:', err);
       alert('Failed to save inspection: ' + err.message);
     }
   };
+  
   
   
   
