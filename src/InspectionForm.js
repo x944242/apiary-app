@@ -226,7 +226,7 @@ function InspectionForm({ onInspectionSaved, selectedApiary, selectedHive, setSe
         forager_activity: cleanField(formData.forager_activity),
         status: cleanField(formData.status),
         stinging_tendency: cleanField(formData.stinging_tendency),
-        buzzing_sound: cleanField(formData.buzzing_sound),
+        
         honey_stores: cleanField(formData.honey_stores),
         pollen_stores: cleanField(formData.pollen_stores),
         feeding_type: cleanField(formData.feeding_type),
