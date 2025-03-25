@@ -235,6 +235,7 @@ function InspectionForm({ onInspectionSaved, selectedApiary, selectedHive, setSe
         pollen_stores: cleanField(formData.pollen_stores),
         feeding_type: cleanField(formData.feeding_type),
         disease_check: cleanField(formData.disease_check),
+        drone_population: cleanDronePopulation(formData.drone_population), // Clean the drone_population
         // Related data already split out
         colonyStrengthData,
         queenStatusData,
@@ -624,6 +625,7 @@ function InspectionForm({ onInspectionSaved, selectedApiary, selectedHive, setSe
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-600 mb-2">Drone Population 👑</label>
+                
                 <select
                   name="drone_population"
                   value={formData.drone_population}
