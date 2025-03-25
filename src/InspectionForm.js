@@ -160,47 +160,53 @@ function InspectionForm({ onInspectionSaved, selectedApiary, selectedHive, setSe
   
     if (!selectedHive) {
       alert('Please select a hive before saving the inspection.');
-      return; // Stop if no hive is selected
+      return;
     }
+  
+    // Extract and remove colony strength data
     const colonyStrengthFields = ['bee_coverage', 'brood_frames', 'drone_population', 'queenright_status', 'brood_pattern', 'buzzing_sound'];
-    const colonyStrengthData = {
-      hive_id: selectedHive.id,
-    };
-    for (const field of colonyStrengthFields) {
+    const colonyStrengthData = { hive_id: selectedHive.id };
+    colonyStrengthFields.forEach((field) => {
       colonyStrengthData[field] = formData[field];
       delete formData[field];
-    }
+    });
+  
+    // Extract and remove queen status data
+    const queenStatusFields = ['queen_seen', 'queen_marked', 'queen_mark_color', 'queen_clipped', 'egg_laying'];
+    const queenStatusData = { hive_id: selectedHive.id };
+    queenStatusFields.forEach((field) => {
+      queenStatusData[field] = formData[field];
+      delete formData[field];
+    });
+  
+    // Construct payload
     const inspectionData = {
       ...formData,
       colonyStrengthData,
+      queenStatusData,
       actions: formData.actions,
       notes: formData.notes,
+      hive_id: selectedHive.id,
     };
   
     try {
       const response = await fetch('/api/hive_inspections', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(inspectionData), // Send all form data
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(inspectionData),
       });
   
       if (!response.ok) {
-        const errorData = await response.json(); // Attempt to get error message
+        const errorData = await response.json();
         throw new Error(errorData.message || 'Failed to save inspection');
       }
   
-      // Remove completed actions from outstanding list
       setOutstandingActions((prev) => prev.filter((action) => !action.checked));
-  
       if (onInspectionSaved) onInspectionSaved();
-  
-      // Reset selected hive (hides the form)
-      setSelectedHive(null);
+      setSelectedHive(null); // Reset selected hive
     } catch (err) {
       console.error('Error saving inspection:', err);
-      alert('Failed to save inspection: ' + err.message); // Show user the error
+      alert('Failed to save inspection: ' + err.message);
     }
   };
   
