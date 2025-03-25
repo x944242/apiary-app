@@ -158,6 +158,10 @@ function InspectionForm({ onInspectionSaved, selectedApiary, selectedHive, setSe
   const handleSubmit = async (e) => {
     e.preventDefault();
   
+ // Log formData before cleaning it to ensure the value of drone_population is correct
+ console.log('Form data before submission:', formData); // This will log the raw data before cleaning
+
+
     if (!selectedHive) {
       alert('Please select a hive before saving the inspection.');
       return;
