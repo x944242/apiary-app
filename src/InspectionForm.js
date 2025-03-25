@@ -213,16 +213,17 @@ function InspectionForm({ onInspectionSaved, selectedApiary, selectedHive, setSe
       .filter((action) => action.checked)
       .map((action) => action.id);
   
-    const inspectionData = {
-      ...formData,
-      colonyStrengthData,
-      queenStatusData,
-      broodPresenceData,
-      actions: formData.actions,
-      notes: formData.notes,
-      completed_action_ids,
-      hive_id: selectedHive.id,
-    };
+      const inspectionData = {
+        ...formData,
+        hive_id: selectedHive.id,
+        colonyStrengthData,
+        queenStatusData,
+        broodPresenceData,
+        actions: formData.actions,
+        notes: formData.notes,
+        completed_action_ids, // ✅ include here (NOT inside the insert into hive_inspections)
+      };
+      
   
     console.log('🐞 Submitting inspection data:', inspectionData);
   
