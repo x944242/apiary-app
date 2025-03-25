@@ -162,21 +162,20 @@ function InspectionForm({ onInspectionSaved, selectedApiary, selectedHive, setSe
       alert('Please select a hive before saving the inspection.');
       return; // Stop if no hive is selected
     }
-  
-    const colonyStrengthFields = ['bee_coverage', 'brood_frames', 'drone_population', 'queenright_status'];
-const colonyStrengthData = {
-  hive_id: selectedHive.id,
-};
-for (const field of colonyStrengthFields) {
-  colonyStrengthData[field] = formData[field];
-  delete formData[field];
-}
-const inspectionData = {
-  ...formData,
-  colonyStrengthData,
-  actions: formData.actions,
-  notes: formData.notes,
-};
+    const colonyStrengthFields = ['bee_coverage', 'brood_frames', 'drone_population', 'queenright_status', 'brood_pattern'];
+    const colonyStrengthData = {
+      hive_id: selectedHive.id,
+    };
+    for (const field of colonyStrengthFields) {
+      colonyStrengthData[field] = formData[field];
+      delete formData[field];
+    }
+    const inspectionData = {
+      ...formData,
+      colonyStrengthData,
+      actions: formData.actions,
+      notes: formData.notes,
+    };
   
     try {
       const response = await fetch('/api/hive_inspections', {
