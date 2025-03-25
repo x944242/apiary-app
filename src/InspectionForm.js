@@ -213,16 +213,33 @@ function InspectionForm({ onInspectionSaved, selectedApiary, selectedHive, setSe
       .filter((action) => action.checked)
       .map((action) => action.id);
   
+
+      const cleanField = (value) => (value === '' ? null : value);
+
+
       const inspectionData = {
         ...formData,
         hive_id: selectedHive.id,
+        flight_activity: cleanField(formData.flight_activity),
+        general_behavior: cleanField(formData.general_behavior),
+        population_growth: cleanField(formData.population_growth),
+        forager_activity: cleanField(formData.forager_activity),
+        status: cleanField(formData.status),
+        stinging_tendency: cleanField(formData.stinging_tendency),
+        buzzing_sound: cleanField(formData.buzzing_sound),
+        honey_stores: cleanField(formData.honey_stores),
+        pollen_stores: cleanField(formData.pollen_stores),
+        feeding_type: cleanField(formData.feeding_type),
+        disease_check: cleanField(formData.disease_check),
+        // Related data already split out
         colonyStrengthData,
         queenStatusData,
         broodPresenceData,
         actions: formData.actions,
         notes: formData.notes,
-        completed_action_ids, // ✅ include here (NOT inside the insert into hive_inspections)
+        completed_action_ids,
       };
+      
       
   
     console.log('🐞 Submitting inspection data:', inspectionData);
