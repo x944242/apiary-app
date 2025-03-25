@@ -178,7 +178,7 @@ function InspectionForm({ onInspectionSaved, selectedApiary, selectedHive, setSe
     ];
     const colonyStrengthData = { hive_id: selectedHive.id };
     colonyStrengthFields.forEach(field => {
-      colonyStrengthData[field] = formData[field];
+      colonyStrengthData[field] = cleanField(formData[field]); // Apply cleanField here
       delete formData[field];
     });
   
@@ -235,8 +235,7 @@ function InspectionForm({ onInspectionSaved, selectedApiary, selectedHive, setSe
         pollen_stores: cleanField(formData.pollen_stores),
         feeding_type: cleanField(formData.feeding_type),
         disease_check: cleanField(formData.disease_check),
-        drone_population: cleanDronePopulation(formData.drone_population), // Clean the drone_population
-        // Related data already split out
+        drone_population: cleanField(formData.drone_population),
         colonyStrengthData,
         queenStatusData,
         broodPresenceData,
