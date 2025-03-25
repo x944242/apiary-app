@@ -163,41 +163,65 @@ function InspectionForm({ onInspectionSaved, selectedApiary, selectedHive, setSe
       return;
     }
   
-    const hive_id = selectedHive.id;
-  
-    // Colony Strength
-    const colonyStrengthFields = ['bee_coverage', 'brood_frames', 'drone_population', 'queenright_status', 'brood_pattern', 'buzzing_sound'];
-    const colonyStrengthData = { hive_id };
-    colonyStrengthFields.forEach((field) => {
+    // Separate colony strength fields
+    const colonyStrengthFields = [
+      'bee_coverage',
+      'brood_frames',
+      'drone_population',
+      'queenright_status',
+      'brood_pattern',
+      'buzzing_sound',
+    ];
+    const colonyStrengthData = { hive_id: selectedHive.id };
+    colonyStrengthFields.forEach(field => {
       colonyStrengthData[field] = formData[field];
       delete formData[field];
     });
   
-    // Queen Status
-    const queenStatusFields = ['queen_seen', 'queen_marked', 'queen_mark_color', 'queen_clipped', 'egg_laying'];
-    const queenStatusData = { hive_id };
-    queenStatusFields.forEach((field) => {
+    // Separate queen status fields
+    const queenStatusFields = [
+      'queen_seen',
+      'queen_marked',
+      'queen_mark_color',
+      'queen_clipped',
+      'egg_laying',
+      'queen_cells',
+    ];
+    const queenStatusData = { hive_id: selectedHive.id };
+    queenStatusFields.forEach(field => {
       queenStatusData[field] = formData[field];
       delete formData[field];
     });
   
-    // Brood Presence (eggs, larvae, sealed brood)
-    const broodPresenceFields = ['eggs_present', 'larvae_present', 'larvae_stage', 'sealed_brood'];
-    const broodPresenceData = { hive_id };
-    broodPresenceFields.forEach((field) => {
+    // Separate brood presence fields
+    const broodPresenceFields = [
+      'eggs_present',
+      'larvae_present',
+      'larvae_stage',
+      'sealed_brood',
+      'brood_pattern',
+      'drone_brood',
+      'queen_cells',
+    ];
+    const broodPresenceData = { hive_id: selectedHive.id };
+    broodPresenceFields.forEach(field => {
       broodPresenceData[field] = formData[field];
       delete formData[field];
     });
   
-    // Main inspection payload
+    const completed_action_ids = outstandingActions
+      .filter((action) => action.checked)
+      .map((action) => action.id);
+  
     const inspectionData = {
       ...formData,
-      hive_id,
       colonyStrengthData,
       queenStatusData,
       broodPresenceData,
       actions: formData.actions,
       notes: formData.notes,
+      completed_action_ids,
+      hive_id: selectedHive.id,
     };
   
     console.log('🐞 Submitting inspection data:', inspectionData);
@@ -211,29 +235,27 @@ function InspectionForm({ onInspectionSaved, selectedApiary, selectedHive, setSe
         body: JSON.stringify(inspectionData),
       });
   
-      const responseText = await response.text();
-  
       if (!response.ok) {
+        const text = await response.text();
         console.error('❌ Server responded with status:', response.status);
-        console.error('❌ Raw response text:', responseText);
-  
-        try {
-          const errorData = JSON.parse(responseText);
-          throw new Error(errorData.message || 'Failed to save inspection');
-        } catch (jsonErr) {
-          throw new Error('Failed to save inspection (non-JSON response)');
-        }
+        console.error('❌ Raw response text:', text);
+        throw new Error('Failed to save inspection (non-JSON response)');
       }
   
-      console.log('✅ Inspection saved successfully');
+      const saved = await response.json();
+      console.log('✅ Inspection saved:', saved);
+  
       setOutstandingActions((prev) => prev.filter((action) => !action.checked));
+  
       if (onInspectionSaved) onInspectionSaved();
-      setSelectedHive(null);
+  
+      setSelectedHive(null); // Reset selection
     } catch (err) {
       console.error('🔥 Exception during save:', err);
       alert('Failed to save inspection: ' + err.message);
     }
   };
+  
   
   
   

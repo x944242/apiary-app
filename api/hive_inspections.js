@@ -25,14 +25,7 @@ export default async function handler(req, res) {
   }
 
   if (req.method === 'POST') {
-    const {
-      colonyStrengthData,
-      actions,
-      notes,
-      queenStatusData,
-      completed_action_ids,
-      ...inspectionData
-    } = req.body;
+    const { colonyStrengthData, queenStatusData, broodPresenceData, actions, notes, ...inspectionData } = req.body;
 
     console.log('📥 Received inspection submission:', req.body);
 
@@ -71,6 +64,27 @@ export default async function handler(req, res) {
           return res.status(500).json({ error: insertStrengthError.message });
         }
       }
+
+// 3. Insert into brood_presence
+if (broodPresenceData) {
+  const broodPresenceToInsert = {
+    inspection_id: inspectionId,
+    ...broodPresenceData,
+  };
+  const { data: broodResult, error: insertBroodError } = await supabase
+    .from('brood_presence')
+    .insert([broodPresenceToInsert]);
+
+  if (insertBroodError) {
+    console.error("DB Error inserting into brood_presence", insertBroodError);
+    return res.status(500).json({ error: insertBroodError.message });
+  }
+
+  if (!broodResult || broodResult.length === 0) {
+    console.warn("Brood presence data was provided, but insert returned no data.");
+  }
+}
+
 
       // 3. Insert into queen_status (if present)
       if (queenStatusData) {
