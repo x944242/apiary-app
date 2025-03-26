@@ -158,6 +158,9 @@ function InspectionForm({ onInspectionSaved, selectedApiary, selectedHive, setSe
   const handleSubmit = async (e) => {
     e.preventDefault();
   
+    const cleanField = (value) => (value === '' ? null : value);
+
+
  // Log formData before cleaning it to ensure the value of drone_population is correct
  console.log('Form data before submission:', formData); // This will log the raw data before cleaning
 
@@ -218,7 +221,6 @@ function InspectionForm({ onInspectionSaved, selectedApiary, selectedHive, setSe
       .map((action) => action.id);
   
 
-      const cleanField = (value) => (value === '' ? null : value);
 
 
       const inspectionData = {
