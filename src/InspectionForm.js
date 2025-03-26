@@ -127,11 +127,14 @@ function InspectionForm({ onInspectionSaved, selectedApiary, selectedHive, setSe
     });
   }, [selectedHive, API_BASE_URL]);
 
-  // Handle input changes for form fields
-  const handleChange = (e) => {
-    const { name, value, type, checked } = e.target;
-    setFormData({ ...formData, [name]: type === 'checkbox' ? checked : value });
-  };
+// Handle input changes for form fields
+const handleChange = (e) => {
+  const { name, value, type, checked } = e.target;
+  setFormData(prevData => ({
+    ...prevData,
+    [name]: name === 'larvae_stage' && value === '' ? null : (type === 'checkbox' ? checked : value),
+  }));
+};
 
   // Handle changes to new actions
   const handleActionChange = (index, field, value) => {
