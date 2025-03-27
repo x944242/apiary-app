@@ -306,18 +306,30 @@ function App() {
   const deleteHive = async (hiveId) => {
     const confirmDelete = window.confirm('Are you sure you want to delete this hive?');
     if (!confirmDelete) return;
-
+  
+    // First, check if the hive still exists on the server
+    try {
+      const response = await axios.get(`${API_BASE_URL}/api/hives`);
+      const existingHives = response.data;
+      if (!existingHives.find((hive) => hive.id === parseInt(hiveId))) {
+        alert('Hive not found. It may have been deleted already.');
+        return;
+      }
+    } catch (err) {
+      console.error('Error checking if hive exists:', err);
+      alert('Failed to check if hive exists.');
+      return;
+    }
+  
     try {
       await axios.delete(`${API_BASE_URL}/api/hives/${hiveId}`);
       const response = await axios.get(`${API_BASE_URL}/api/hives`);
       setHives(response.data);
-
-      if (selectedHive && selectedHive.id === hiveId) {
+      if (selectedHive && selectedHive.id === parseInt(hiveId)) {
         setSelectedHive(null);
         setLatestInspection(null);
         setShowInspectionForm(false);
       }
-
       alert('Hive deleted successfully!');
     } catch (err) {
       console.error('Error deleting hive:', err);
