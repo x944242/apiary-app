@@ -182,7 +182,7 @@ const handleChange = (e) => {
       'brood_pattern',
       'buzzing_sound',
     ];
-    const colonyStrengthData = { hive_id: selectedHive.id };
+    const colonyStrengthData = { };
     colonyStrengthFields.forEach(field => {
       colonyStrengthData[field] = cleanField(formData[field]); // Apply cleanField here
       delete formData[field];
@@ -197,7 +197,7 @@ const handleChange = (e) => {
       'egg_laying',
       'queen_cells',
     ];
-    const queenStatusData = { hive_id: selectedHive.id };
+    const queenStatusData = { };
     queenStatusFields.forEach(field => {
       queenStatusData[field] = formData[field];
       delete formData[field];
@@ -213,7 +213,7 @@ const handleChange = (e) => {
       'drone_brood',
       'queen_cells',
     ];
-    const broodPresenceData = { hive_id: selectedHive.id };
+    const broodPresenceData = { };
     broodPresenceFields.forEach(field => {
       broodPresenceData[field] = formData[field];
       delete formData[field];
