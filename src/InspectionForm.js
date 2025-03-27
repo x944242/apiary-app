@@ -219,6 +219,10 @@ const handleChange = (e) => {
       delete formData[field];
     });
   
+    if (!broodPresenceData.larvae_present) {
+      broodPresenceData.larvae_stage = null;
+    }
+
     const completed_action_ids = outstandingActions
       .filter((action) => action.checked)
       .map((action) => action.id);
