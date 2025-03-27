@@ -202,6 +202,14 @@ const handleChange = (e) => {
       queenStatusData[field] = formData[field];
       delete formData[field];
     });
+
+// Clean string fields in queenStatusData
+['queen_mark_color', 'egg_laying', 'queen_cells'].forEach(field => {
+  if (typeof queenStatusData[field] === 'string' && queenStatusData[field] === '') {
+    queenStatusData[field] = null;
+  }
+});
+
   
     // Separate brood presence fields
     const broodPresenceFields = [
@@ -211,7 +219,7 @@ const handleChange = (e) => {
       'sealed_brood',
       'brood_pattern',
       'drone_brood',
-      'queen_cells',
+      
     ];
     const broodPresenceData = { };
     broodPresenceFields.forEach(field => {
@@ -219,6 +227,14 @@ const handleChange = (e) => {
       delete formData[field];
     });
   
+
+// Clean string fields in broodPresenceData
+['larvae_stage', 'brood_pattern'].forEach(field => {
+  if (typeof broodPresenceData[field] === 'string' && broodPresenceData[field] === '') {
+    broodPresenceData[field] = null;
+  }
+});
+
     if (!broodPresenceData.larvae_present) {
       broodPresenceData.larvae_stage = null;
     }
