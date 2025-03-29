@@ -454,11 +454,15 @@ function App() {
   
     const renderFields = (sectionName, data) => {
       if (!data || typeof data !== 'object') return null;
-  
+    
       return Object.entries(data).map(([key, value]) => {
+        // 🔒 Only render if the value is a primitive (not object or array)
+        if (typeof value === 'object' && value !== null) return null;
+    
         const label = labelMap[key] || key;
         const display = displayValue(value);
         if (display === null) return null;
+    
         return (
           <li key={`${sectionName}-${key}`}>
             <strong>{label}:</strong> {display}
@@ -466,6 +470,7 @@ function App() {
         );
       });
     };
+    
   
     return (
       <div className="bg-gray-100 p-4 rounded-md shadow-md flex-grow mt-4">
