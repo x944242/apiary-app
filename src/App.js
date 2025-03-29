@@ -447,68 +447,72 @@ function App() {
     };
   
     const displayValue = (val) => {
-      if (typeof val === 'boolean') return val ? 'Yes' : 'No';
-      if (val === null || val === undefined || val === '') return null;
+      if (typeof val === "boolean") return val ? "Yes" : "No";
+      if (val === null || val === undefined || val === "") return null;
       return val;
     };
   
     const renderFields = (sectionName, data) => {
-      if (!data || typeof data !== 'object') return null;
-    
-      return Object.entries(data).map(([key, value]) => {
-        // 🔒 Only render if the value is a primitive (not object or array)
-        if (typeof value === 'object' && value !== null) return null;
-    
-        const label = labelMap[key] || key;
-        const display = displayValue(value);
-        if (display === null) return null;
-    
-        return (
-          <li key={`${sectionName}-${key}`}>
-            <strong>{label}:</strong> {display}
-          </li>
-        );
-      });
+      if (!data || typeof data !== "object") return null;
+  
+      return Object.entries(data)
+        .filter(([_, value]) => {
+          // Only include primitive values that are not null/undefined/empty object/array
+          return (
+            (typeof value !== "object" || value === null) &&
+            displayValue(value) !== null
+          );
+        })
+        .map(([key, value]) => {
+          const label = labelMap[key] || key;
+          const display = displayValue(value);
+          return (
+            <li key={`${sectionName}-${key}`}>
+              <strong>{label}:</strong> {display}
+            </li>
+          );
+        });
     };
-    
   
     return (
       <div className="bg-gray-100 p-4 rounded-md shadow-md flex-grow mt-4">
         <h3 className="text-lg font-semibold text-gray-800 mb-2">
           Latest Inspection for Hive {inspection.hive_id}
         </h3>
-  
         <ul className="list-disc ml-5 text-gray-700 space-y-1">
-          {renderFields('main', inspection)}
-          {Array.isArray(inspection.queen_status) && inspection.queen_status[0] && renderFields('queen', inspection.queen_status[0])}
-          {Array.isArray(inspection.brood_presence) && inspection.brood_presence[0] && renderFields('brood', inspection.brood_presence[0])}
-          {Array.isArray(inspection.colony_strength) && inspection.colony_strength[0] && renderFields('strength', inspection.colony_strength[0])}
-        </ul>
+          {/* Always show date */}
+          {inspection.date && (
+            <li>
+              <strong>{labelMap.date}:</strong>{" "}
+              {new Date(inspection.date).toLocaleDateString()}
+            </li>
+          )}
+          {/* Show notes if they exist */}
+          {inspection.notes && (
+            <li>
+              <strong>{labelMap.notes}:</strong> {inspection.notes}
+            </li>
+          )}
+          {/* Subsections */}
+          {Array.isArray(inspection.queen_status) &&
+            inspection.queen_status[0] &&
+            renderFields("queen", inspection.queen_status[0])}
   
-        {/* Optional completed actions section */}
-        {inspection.completed_actions && (() => {
-          try {
-            const actions = JSON.parse(inspection.completed_actions);
-            return actions.length > 0 && (
-              <div className="bg-green-100 p-4 rounded-md shadow-md mt-4">
-                <h4 className="text-md font-semibold text-gray-800">Completed Actions</h4>
-                <ul className="list-disc ml-6">
-                  {actions.map((action, i) => (
-                    <li key={i}>
-                      {action.text} (Completed at: {new Date(action.completed_at).toLocaleString()})
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            );
-          } catch (err) {
-            console.error("❌ Error parsing completed_actions:", err);
-            return null;
-          }
-        })()}
+          {Array.isArray(inspection.brood_presence) &&
+            inspection.brood_presence[0] &&
+            renderFields("brood", inspection.brood_presence[0])}
+  
+          {Array.isArray(inspection.colony_strength) &&
+            inspection.colony_strength[0] &&
+            renderFields("strength", inspection.colony_strength[0])}
+  
+          {/* Flat top-level fields */}
+          {renderFields("main", inspection)}
+        </ul>
       </div>
     );
   };
+  
   
   
   
