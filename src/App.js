@@ -412,76 +412,82 @@ function App() {
 
   const renderLatestInspectionSummary = (inspection) => {
     console.log("🐝 Summary renderer received:", inspection);
-
-    
+  
     if (!inspection) return null;
   
+    // Labels for display
     const labelMap = {
-      inspection_date: "Date",
+      date: "Inspection Date",
       notes: "Notes",
-      // Main
-      general_behavior: "General Behavior",
-      flight_activity: "Flight Activity",
-      population_growth: "Population Growth",
-      forager_activity: "Forager Activity",
-      status: "Status",
-      // Queen
-      queen_seen: "Queen Seen",
-      queen_marked: "Queen Marked",
-      queen_mark_color: "Queen Mark Colour",
-      queen_clipped: "Queen Clipped",
-      egg_laying: "Egg Laying Pattern",
-      queen_cells: "Queen Cells",
-      // Brood
-      eggs_present: "Eggs Present",
-      larvae_present: "Larvae Present",
-      larvae_stage: "Larvae Stage",
-      sealed_brood: "Sealed Brood",
-      brood_pattern: "Brood Pattern",
-      drone_brood: "Drone Brood Count",
-      // Strength
-      bee_coverage: "Bee Coverage",
-      brood_frames: "Brood Frames",
-      drone_population: "Drone Population",
-      queenright_status: "Queenright Status",
     };
   
+    // Only show these fields even if null/empty
+    const alwaysShowFields = ["date", "notes"];
+  
+    // Utility for formatting values
     const displayValue = (val) => {
       if (typeof val === 'boolean') return val ? 'Yes' : 'No';
       if (val === null || val === undefined || val === '') return null;
       return val;
     };
   
-    const renderFields = (section, fields) => (
-      Object.entries(fields).map(([key, value]) => {
-        const label = labelMap[key];
-        const display = displayValue(value);
-        if (!label || display === null) return null;
+    // Render key fields (main fields only)
+    const renderMainFields = () => {
+      return Object.entries(inspection)
+        .filter(([key, value]) => alwaysShowFields.includes(key) || displayValue(value) !== null)
+        .filter(([key]) => labelMap[key]) // only show labeled fields
+        .map(([key, value]) => {
+          const display = displayValue(value);
+          if (display === null) return null;
+          return (
+            <li key={`main-${key}`}>
+              <strong>{labelMap[key] || key}:</strong> {display}
+            </li>
+          );
+        });
+    };
+  
+    // Optional: render outstanding actions if any
+    const renderActions = () => {
+      if (!inspection.completed_actions) return null;
+  
+      try {
+        const actions = JSON.parse(inspection.completed_actions);
+        if (!Array.isArray(actions) || actions.length === 0) return null;
+  
         return (
-          <li key={`${section}-${key}`}>
-            <strong>{label}:</strong> {display}
-          </li>
+          <div className="bg-green-100 p-4 rounded-md shadow-md mt-4">
+            <h4 className="text-md font-semibold text-gray-800">Completed Actions</h4>
+            <ul className="list-disc ml-6">
+              {actions.map((action, index) => (
+                <li key={index}>
+                  {action.text} (Completed at: {new Date(action.completed_at).toLocaleString()})
+                </li>
+              ))}
+            </ul>
+          </div>
         );
-      })
-    );
+      } catch (err) {
+        console.error("❌ Failed to parse completed_actions:", err);
+        return null;
+      }
+    };
   
     return (
       <div className="bg-gray-100 p-4 rounded-md shadow-md flex-grow mt-4">
         <h3 className="text-lg font-semibold text-gray-800 mb-2">
           Latest Inspection for Hive {inspection.hive_id}
         </h3>
-        <pre className="text-xs text-gray-500 overflow-x-auto">{JSON.stringify(inspection, null, 2)}</pre>
-
+  
         <ul className="list-disc ml-5 text-gray-700 space-y-1">
-  {renderFields('main', inspection)}
-  {Array.isArray(inspection.queen_status) && inspection.queen_status[0] && renderFields('queen', inspection.queen_status[0])}
-  {Array.isArray(inspection.brood_presence) && inspection.brood_presence[0] && renderFields('brood', inspection.brood_presence[0])}
-  {Array.isArray(inspection.colony_strength) && inspection.colony_strength[0] && renderFields('strength', inspection.colony_strength[0])}
-</ul>
-
+          {renderMainFields()}
+        </ul>
+  
+        {renderActions()}
       </div>
     );
   };
+  
   
 
   return (
