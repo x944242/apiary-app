@@ -446,16 +446,33 @@ function App() {
     };
   
     const displayValue = (val) => {
-      if (typeof val === "boolean") return val ? "Yes" : "No";
-      if (val === null || val === undefined || val === "") return null;
+      if (val === null || val === undefined || val === '') return null;
+    
+      // 🧠 If value is explicitly 0, check if that's a meaningful value
+      if (typeof val === 'number' && val === 0) return null;
+    
+      if (typeof val === 'boolean') return val ? 'Yes' : 'No';
+    
       return val;
     };
+    
   
     const renderSection = (data, fields, icon, title) => {
       const items = fields
         .map((key) => {
-          const val = displayValue(data[key]);
+          let val = displayValue(data[key]);
           if (val === null) return null;
+    
+          // 🔄 Format the date field nicely
+          if (key === "date") {
+            const dateObj = new Date(data[key]);
+            val = dateObj.toLocaleDateString("en-GB", {
+              day: "numeric",
+              month: "long",
+              year: "numeric",
+            });
+          }
+    
           return (
             <li key={key} className="mb-1">
               <strong>{labelMap[key] || key}:</strong> {val}
@@ -463,9 +480,9 @@ function App() {
           );
         })
         .filter(Boolean);
-  
+    
       if (items.length === 0) return null;
-  
+    
       return (
         <div className="bg-white p-4 rounded shadow">
           <h4 className="text-md font-semibold text-gray-800 mb-2">{icon} {title}</h4>
@@ -473,6 +490,7 @@ function App() {
         </div>
       );
     };
+    
   
     return (
       <div className="bg-gray-100 p-4 rounded-md shadow-md mt-4">
