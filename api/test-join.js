@@ -15,8 +15,8 @@ export default async function handler(req, res) {
         brood_presence(*),
         colony_strength(*)
       `)
-      .order('inspection_date', { ascending: false })
-      .limit(5); // Just grab the 5 most recent for test
+      .order('date', { ascending: false }) // ✅ Use 'date' instead of 'inspection_date'
+      .limit(5);
 
     if (error) {
       console.error('❌ Supabase error:', error);
