@@ -451,77 +451,81 @@ function App() {
       return val;
     };
   
-    const renderFields = (data, fields, icon = "", sectionName = "") => {
-      const visibleFields = fields.filter((key) => displayValue(data[key]) !== null);
-      if (visibleFields.length === 0) return null;
+    const renderSection = (data, fields, icon, title) => {
+      const items = fields
+        .map((key) => {
+          const val = displayValue(data[key]);
+          if (val === null) return null;
+          return (
+            <li key={key} className="mb-1">
+              <strong>{labelMap[key] || key}:</strong> {val}
+            </li>
+          );
+        })
+        .filter(Boolean);
+  
+      if (items.length === 0) return null;
   
       return (
-        <div className="mt-4">
-          {sectionName && (
-            <h4 className="text-md font-semibold text-gray-800 mb-1">
-              {icon} {sectionName}
-            </h4>
-          )}
-          <ul className="list-disc ml-6 space-y-1 text-gray-700">
-            {visibleFields.map((key) => (
-              <li key={key}>
-                <strong>{labelMap[key] || key}:</strong> {displayValue(data[key])}
-              </li>
-            ))}
-          </ul>
+        <div className="bg-white p-4 rounded shadow">
+          <h4 className="text-md font-semibold text-gray-800 mb-2">{icon} {title}</h4>
+          <ul className="list-disc ml-5 text-gray-700">{items}</ul>
         </div>
       );
     };
   
     return (
-      <div className="bg-gray-100 p-4 rounded-md shadow-md flex-grow mt-4">
-        <h3 className="text-lg font-semibold text-gray-800 mb-2">
+      <div className="bg-gray-100 p-4 rounded-md shadow-md mt-4">
+        <h3 className="text-lg font-semibold text-gray-800 mb-4">
           Latest Inspection for Hive {inspection.hive_id}
         </h3>
   
-        {/* 📅 Basic info */}
-        {renderFields(inspection, ["date", "notes"], "📅", "Inspection Info")}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* 📅 Inspection Info */}
+          {renderSection(inspection, ["date", "notes"], "📅", "Inspection Info")}
   
-        {/* 👑 Queen Status */}
-        {Array.isArray(inspection.queen_status) &&
-          inspection.queen_status[0] &&
-          renderFields(
-            inspection.queen_status[0],
-            ["queen_seen", "queen_marked", "queen_mark_color", "queen_clipped", "egg_laying", "queen_cells"],
-            "👑",
-            "Queen Status"
+          {/* 👑 Queen Status */}
+          {Array.isArray(inspection.queen_status) &&
+            inspection.queen_status[0] &&
+            renderSection(
+              inspection.queen_status[0],
+              ["queen_seen", "queen_marked", "queen_mark_color", "queen_clipped", "egg_laying", "queen_cells"],
+              "👑",
+              "Queen Status"
+            )}
+  
+          {/* 🐣 Brood Presence */}
+          {Array.isArray(inspection.brood_presence) &&
+            inspection.brood_presence[0] &&
+            renderSection(
+              inspection.brood_presence[0],
+              ["eggs_present", "larvae_present", "larvae_stage", "sealed_brood", "brood_pattern", "drone_brood"],
+              "🐣",
+              "Brood Presence"
+            )}
+  
+          {/* 💪 Colony Strength */}
+          {Array.isArray(inspection.colony_strength) &&
+            inspection.colony_strength[0] &&
+            renderSection(
+              inspection.colony_strength[0],
+              ["bee_coverage", "brood_frames", "drone_population", "queenright_status"],
+              "💪",
+              "Colony Strength"
+            )}
+  
+          {/* 🍯 Resources & Health */}
+          {renderSection(
+            inspection,
+            ["honey_stores", "pollen_stores", "feeding_required", "supering_needed", "feeding_type", "disease_check"],
+            "🍯",
+            "Resources & Health"
           )}
-  
-        {/* 🐣 Brood Presence */}
-        {Array.isArray(inspection.brood_presence) &&
-          inspection.brood_presence[0] &&
-          renderFields(
-            inspection.brood_presence[0],
-            ["eggs_present", "larvae_present", "larvae_stage", "sealed_brood", "brood_pattern", "drone_brood"],
-            "🐣",
-            "Brood Presence"
-          )}
-  
-        {/* 💪 Colony Strength */}
-        {Array.isArray(inspection.colony_strength) &&
-          inspection.colony_strength[0] &&
-          renderFields(
-            inspection.colony_strength[0],
-            ["bee_coverage", "brood_frames", "drone_population", "queenright_status"],
-            "💪",
-            "Colony Strength"
-          )}
-  
-        {/* 🍯 Resources & Health */}
-        {renderFields(
-          inspection,
-          ["honey_stores", "pollen_stores", "feeding_required", "supering_needed", "feeding_type", "disease_check"],
-          "🍯",
-          "Resources & Health"
-        )}
+        </div>
       </div>
     );
   };
+  
   
   
   
