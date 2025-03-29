@@ -130,6 +130,7 @@ function App() {
 
   // Handle inspection save and refresh inspections
   const handleInspectionSaved = async () => {
+   
     if (!selectedHive) return; // Ensure a hive is selected
   
     try {
@@ -141,6 +142,8 @@ function App() {
       setSelectedHive(null); // ✅ Reset AFTER fetching updated actions
   
       const res = await axios.get(`${API_BASE_URL}/api/hive_inspections`);
+      console.log('🧪 Full inspections from API:', res.data);
+
       console.log("🔍 Response from /hive_inspections:", res.data);
 
       setInspections(res.data);
@@ -346,11 +349,14 @@ function App() {
 
   // Handle hive selection
   const handleHiveClick = async (hive) => {
+
     console.log('🖱️ Hive clicked:', hive);
     setSelectedHive(hive);
 
     try {
       const res = await axios.get(`${API_BASE_URL}/api/hive_inspections`);
+      console.log('🧪 Full inspections from API:', res.data);
+
       setInspections(res.data);
 
       const latest = res.data
@@ -403,6 +409,9 @@ function App() {
 
 
   const renderLatestInspectionSummary = (inspection) => {
+    console.log("🐝 Summary renderer received:", inspection);
+
+    
     if (!inspection) return null;
   
     const labelMap = {
@@ -553,29 +562,23 @@ function App() {
 
                 {/* Display latest inspection for selected hive */}
                 {selectedHive && latestInspection && (
-                  <div className="mt-4">
-                    <div className="md:flex md:items-start gap-4">
-                      <div className="bg-gray-100 p-4 rounded-md shadow-md flex-grow">
-                        
-                        {latestInspection && renderLatestInspectionSummary(latestInspection)}
+  <div className="mt-4">
+    {renderLatestInspectionSummary(latestInspection)}
+    {latestInspection.completed_actions && (
+      <div className="bg-green-100 p-4 rounded-md shadow-md mt-4">
+        <h4 className="text-md font-semibold text-gray-800">Completed Actions</h4>
+        <ul className="list-disc ml-6">
+          {JSON.parse(latestInspection.completed_actions).map((action, index) => (
+            <li key={index}>
+              {action.text} (Completed at: {new Date(action.completed_at).toLocaleString()})
+            </li>
+          ))}
+        </ul>
+      </div>
+    )}
+  </div>
+)}
 
-                      </div>
-                      <div className="bg-gray-100 p-4 rounded-md shadow-md flex-grow">
-                        <p><strong>Notes:</strong> {latestInspection.notes || 'None'}</p>
-                      </div>
-                    </div>
-                    {latestInspection.completed_actions && (
-                      <div className="bg-green-100 p-4 rounded-md shadow-md mt-4">
-                        <h4 className="text-md font-semibold text-gray-800">Completed Actions</h4>
-                        <ul className="list-disc ml-6">
-                          {JSON.parse(latestInspection.completed_actions).map((action, index) => (
-                            <li key={index}>{action.text} (Completed at: {new Date(action.completed_at).toLocaleString()})</li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
-                  </div>
-                )}
               </div>
 
               <button
