@@ -149,7 +149,7 @@ function App() {
       setInspections(res.data);
   
       const latest = res.data
-  .filter((i) => i.hive_id === hive.id)
+  .filter((i) => i.hive_id === hiveId)
   .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))[0];
 
   
