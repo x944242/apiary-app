@@ -469,11 +469,12 @@ function App() {
           Latest Inspection for Hive {inspection.hive_id}
         </h3>
         <ul className="list-disc ml-5 text-gray-700 space-y-1">
-          {renderFields('main', inspection)}
-          {inspection.queen_status && renderFields('queen', inspection.queen_status)}
-          {inspection.brood_presence && renderFields('brood', inspection.brood_presence)}
-          {inspection.colony_strength && renderFields('strength', inspection.colony_strength)}
-        </ul>
+  {renderFields('main', inspection)}
+  {Array.isArray(inspection.queen_status) && inspection.queen_status[0] && renderFields('queen', inspection.queen_status[0])}
+  {Array.isArray(inspection.brood_presence) && inspection.brood_presence[0] && renderFields('brood', inspection.brood_presence[0])}
+  {Array.isArray(inspection.colony_strength) && inspection.colony_strength[0] && renderFields('strength', inspection.colony_strength[0])}
+</ul>
+
       </div>
     );
   };
