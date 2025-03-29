@@ -556,9 +556,7 @@ function App() {
                   <div className="mt-4">
                     <div className="md:flex md:items-start gap-4">
                       <div className="bg-gray-100 p-4 rounded-md shadow-md flex-grow">
-                        <h3 className="text-lg font-semibold text-gray-800">
-                          Latest Inspection for hive {selectedHive.id}
-                        </h3>
+                        
                         {latestInspection && renderLatestInspectionSummary(latestInspection)}
 
                       </div>
