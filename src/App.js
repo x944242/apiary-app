@@ -400,6 +400,76 @@ function App() {
     setShowInspectionForm(false);
   };
 
+
+
+  const renderLatestInspectionSummary = (inspection) => {
+    if (!inspection) return null;
+  
+    const labelMap = {
+      inspection_date: "Date",
+      notes: "Notes",
+      // Main
+      general_behavior: "General Behavior",
+      flight_activity: "Flight Activity",
+      population_growth: "Population Growth",
+      forager_activity: "Forager Activity",
+      status: "Status",
+      // Queen
+      queen_seen: "Queen Seen",
+      queen_marked: "Queen Marked",
+      queen_mark_color: "Queen Mark Colour",
+      queen_clipped: "Queen Clipped",
+      egg_laying: "Egg Laying Pattern",
+      queen_cells: "Queen Cells",
+      // Brood
+      eggs_present: "Eggs Present",
+      larvae_present: "Larvae Present",
+      larvae_stage: "Larvae Stage",
+      sealed_brood: "Sealed Brood",
+      brood_pattern: "Brood Pattern",
+      drone_brood: "Drone Brood Count",
+      // Strength
+      bee_coverage: "Bee Coverage",
+      brood_frames: "Brood Frames",
+      drone_population: "Drone Population",
+      queenright_status: "Queenright Status",
+    };
+  
+    const displayValue = (val) => {
+      if (typeof val === 'boolean') return val ? 'Yes' : 'No';
+      if (val === null || val === undefined || val === '') return null;
+      return val;
+    };
+  
+    const renderFields = (section, fields) => (
+      Object.entries(fields).map(([key, value]) => {
+        const label = labelMap[key];
+        const display = displayValue(value);
+        if (!label || display === null) return null;
+        return (
+          <li key={`${section}-${key}`}>
+            <strong>{label}:</strong> {display}
+          </li>
+        );
+      })
+    );
+  
+    return (
+      <div className="bg-gray-100 p-4 rounded-md shadow-md flex-grow mt-4">
+        <h3 className="text-lg font-semibold text-gray-800 mb-2">
+          Latest Inspection for Hive {inspection.hive_id}
+        </h3>
+        <ul className="list-disc ml-5 text-gray-700 space-y-1">
+          {renderFields('main', inspection)}
+          {inspection.queen_status && renderFields('queen', inspection.queen_status)}
+          {inspection.brood_presence && renderFields('brood', inspection.brood_presence)}
+          {inspection.colony_strength && renderFields('strength', inspection.colony_strength)}
+        </ul>
+      </div>
+    );
+  };
+  
+
   return (
     
     <div className="min-h-screen bg-gray-100 flex flex-col">
@@ -487,15 +557,10 @@ function App() {
                     <div className="md:flex md:items-start gap-4">
                       <div className="bg-gray-100 p-4 rounded-md shadow-md flex-grow">
                         <h3 className="text-lg font-semibold text-gray-800">
-                          Latest Inspection for Hive {selectedHive.id}
+                          Latest Inspection for hive {selectedHive.id}
                         </h3>
-                        <p><strong>Date:</strong> {latestInspection.inspection_date}</p>
-                        <p><strong>Queen Seen:</strong> {latestInspection.queen_status?.queen_seen ? 'Yes' : 'No'}</p>
-                        <p><strong>Egg Laying:</strong> {latestInspection.queen_status?.egg_laying || 'N/A'}</p>
-                        <p><strong>Eggs Present:</strong> {latestInspection.brood_presence?.eggs_present ? 'Yes' : 'No'}</p>
-                        <p><strong>Brood Pattern:</strong> {latestInspection.brood_presence?.brood_pattern || 'N/A'}</p>
-                        <p><strong>Bee Coverage:</strong> {latestInspection.colony_strength?.bee_coverage || 'N/A'}</p>
-                        <p><strong>Queenright Status:</strong> {latestInspection.colony_strength?.queenright_status || 'N/A'}</p>
+                        {latestInspection && renderLatestInspectionSummary(latestInspection)}
+
                       </div>
                       <div className="bg-gray-100 p-4 rounded-md shadow-md flex-grow">
                         <p><strong>Notes:</strong> {latestInspection.notes || 'None'}</p>
