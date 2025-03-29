@@ -415,62 +415,56 @@ function App() {
   
     if (!inspection) return null;
   
-    // Labels for display
     const labelMap = {
       date: "Inspection Date",
       notes: "Notes",
+      // Queen
+      queen_seen: "Queen Seen",
+      queen_marked: "Queen Marked",
+      queen_mark_color: "Queen Mark Colour",
+      queen_clipped: "Queen Clipped",
+      egg_laying: "Egg Laying Pattern",
+      queen_cells: "Queen Cells",
+      // Brood
+      eggs_present: "Eggs Present",
+      larvae_present: "Larvae Present",
+      larvae_stage: "Larvae Stage",
+      sealed_brood: "Sealed Brood",
+      brood_pattern: "Brood Pattern",
+      drone_brood: "Drone Brood Count",
+      // Strength
+      bee_coverage: "Bee Coverage",
+      brood_frames: "Brood Frames",
+      drone_population: "Drone Population",
+      queenright_status: "Queenright Status",
+      // Resources
+      honey_stores: "Honey Stores",
+      pollen_stores: "Pollen Stores",
+      feeding_required: "Feeding Required",
+      supering_needed: "Supering Needed",
+      feeding_type: "Feeding Type",
+      disease_check: "Disease Check",
     };
   
-    // Only show these fields even if null/empty
-    const alwaysShowFields = ["date", "notes"];
-  
-    // Utility for formatting values
     const displayValue = (val) => {
       if (typeof val === 'boolean') return val ? 'Yes' : 'No';
       if (val === null || val === undefined || val === '') return null;
       return val;
     };
   
-    // Render key fields (main fields only)
-    const renderMainFields = () => {
-      return Object.entries(inspection)
-        .filter(([key, value]) => alwaysShowFields.includes(key) || displayValue(value) !== null)
-        .filter(([key]) => labelMap[key]) // only show labeled fields
-        .map(([key, value]) => {
-          const display = displayValue(value);
-          if (display === null) return null;
-          return (
-            <li key={`main-${key}`}>
-              <strong>{labelMap[key] || key}:</strong> {display}
-            </li>
-          );
-        });
-    };
+    const renderFields = (sectionName, data) => {
+      if (!data || typeof data !== 'object') return null;
   
-    // Optional: render outstanding actions if any
-    const renderActions = () => {
-      if (!inspection.completed_actions) return null;
-  
-      try {
-        const actions = JSON.parse(inspection.completed_actions);
-        if (!Array.isArray(actions) || actions.length === 0) return null;
-  
+      return Object.entries(data).map(([key, value]) => {
+        const label = labelMap[key] || key;
+        const display = displayValue(value);
+        if (display === null) return null;
         return (
-          <div className="bg-green-100 p-4 rounded-md shadow-md mt-4">
-            <h4 className="text-md font-semibold text-gray-800">Completed Actions</h4>
-            <ul className="list-disc ml-6">
-              {actions.map((action, index) => (
-                <li key={index}>
-                  {action.text} (Completed at: {new Date(action.completed_at).toLocaleString()})
-                </li>
-              ))}
-            </ul>
-          </div>
+          <li key={`${sectionName}-${key}`}>
+            <strong>{label}:</strong> {display}
+          </li>
         );
-      } catch (err) {
-        console.error("❌ Failed to parse completed_actions:", err);
-        return null;
-      }
+      });
     };
   
     return (
@@ -480,13 +474,31 @@ function App() {
         </h3>
   
         <ul className="list-disc ml-5 text-gray-700 space-y-1">
-          {renderMainFields()}
+          {renderFields('main', inspection)}
+          {Array.isArray(inspection.queen_status) && inspection.queen_status[0] && renderFields('queen', inspection.queen_status[0])}
+          {Array.isArray(inspection.brood_presence) && inspection.brood_presence[0] && renderFields('brood', inspection.brood_presence[0])}
+          {Array.isArray(inspection.colony_strength) && inspection.colony_strength[0] && renderFields('strength', inspection.colony_strength[0])}
         </ul>
   
-        {renderActions()}
-      </div>
-    );
-  };
+        {/* Optional completed actions section */}
+        {inspection.completed_actions && (() => {
+          try {
+            const actions = JSON.parse(inspection.completed_actions);
+            return actions.length > 0 && (
+              <div className="bg-green-100 p-4 rounded-md shadow-md mt-4">
+                <h4 className="text-md font-semibold text-gray-800">Completed Actions</h4>
+                <ul className="list-disc ml-6">
+                  {actions.map((action, i) => (
+                    <li key={i}>
+                      {action.text} (Completed at: {new Date(action.completed_at).toLocaleString()})
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            );
+          } catch (err) {
+            console.error("
+  
   
   
 
