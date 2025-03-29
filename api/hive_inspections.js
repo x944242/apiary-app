@@ -9,8 +9,14 @@ export default async function handler(req, res) {
   if (req.method === 'GET') {
     try {
       const { data, error } = await supabase
-        .from('hive_inspections')
-        .select('*');
+      .from('hive_inspections')
+      .select(`
+        *,
+        queen_status(*),
+        brood_presence(*),
+        colony_strength(*)
+      `);
+    
 
       if (error) {
         console.error('Error fetching hive inspections:', error);
