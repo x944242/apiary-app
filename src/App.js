@@ -412,7 +412,6 @@ function App() {
 
   const renderLatestInspectionSummary = (inspection) => {
     console.log("🐝 Summary renderer received:", inspection);
-  
     if (!inspection) return null;
   
     const labelMap = {
@@ -452,26 +451,26 @@ function App() {
       return val;
     };
   
-    const renderFields = (sectionName, data) => {
-      if (!data || typeof data !== "object") return null;
+    const renderFields = (data, fields, icon = "", sectionName = "") => {
+      const visibleFields = fields.filter((key) => displayValue(data[key]) !== null);
+      if (visibleFields.length === 0) return null;
   
-      return Object.entries(data)
-        .filter(([_, value]) => {
-          // Only include primitive values that are not null/undefined/empty object/array
-          return (
-            (typeof value !== "object" || value === null) &&
-            displayValue(value) !== null
-          );
-        })
-        .map(([key, value]) => {
-          const label = labelMap[key] || key;
-          const display = displayValue(value);
-          return (
-            <li key={`${sectionName}-${key}`}>
-              <strong>{label}:</strong> {display}
-            </li>
-          );
-        });
+      return (
+        <div className="mt-4">
+          {sectionName && (
+            <h4 className="text-md font-semibold text-gray-800 mb-1">
+              {icon} {sectionName}
+            </h4>
+          )}
+          <ul className="list-disc ml-6 space-y-1 text-gray-700">
+            {visibleFields.map((key) => (
+              <li key={key}>
+                <strong>{labelMap[key] || key}:</strong> {displayValue(data[key])}
+              </li>
+            ))}
+          </ul>
+        </div>
+      );
     };
   
     return (
@@ -479,39 +478,51 @@ function App() {
         <h3 className="text-lg font-semibold text-gray-800 mb-2">
           Latest Inspection for Hive {inspection.hive_id}
         </h3>
-        <ul className="list-disc ml-5 text-gray-700 space-y-1">
-          {/* Always show date */}
-          {inspection.date && (
-            <li>
-              <strong>{labelMap.date}:</strong>{" "}
-              {new Date(inspection.date).toLocaleDateString()}
-            </li>
+  
+        {/* 📅 Basic info */}
+        {renderFields(inspection, ["date", "notes"], "📅", "Inspection Info")}
+  
+        {/* 👑 Queen Status */}
+        {Array.isArray(inspection.queen_status) &&
+          inspection.queen_status[0] &&
+          renderFields(
+            inspection.queen_status[0],
+            ["queen_seen", "queen_marked", "queen_mark_color", "queen_clipped", "egg_laying", "queen_cells"],
+            "👑",
+            "Queen Status"
           )}
-          {/* Show notes if they exist */}
-          {inspection.notes && (
-            <li>
-              <strong>{labelMap.notes}:</strong> {inspection.notes}
-            </li>
+  
+        {/* 🐣 Brood Presence */}
+        {Array.isArray(inspection.brood_presence) &&
+          inspection.brood_presence[0] &&
+          renderFields(
+            inspection.brood_presence[0],
+            ["eggs_present", "larvae_present", "larvae_stage", "sealed_brood", "brood_pattern", "drone_brood"],
+            "🐣",
+            "Brood Presence"
           )}
-          {/* Subsections */}
-          {Array.isArray(inspection.queen_status) &&
-            inspection.queen_status[0] &&
-            renderFields("queen", inspection.queen_status[0])}
   
-          {Array.isArray(inspection.brood_presence) &&
-            inspection.brood_presence[0] &&
-            renderFields("brood", inspection.brood_presence[0])}
+        {/* 💪 Colony Strength */}
+        {Array.isArray(inspection.colony_strength) &&
+          inspection.colony_strength[0] &&
+          renderFields(
+            inspection.colony_strength[0],
+            ["bee_coverage", "brood_frames", "drone_population", "queenright_status"],
+            "💪",
+            "Colony Strength"
+          )}
   
-          {Array.isArray(inspection.colony_strength) &&
-            inspection.colony_strength[0] &&
-            renderFields("strength", inspection.colony_strength[0])}
-  
-          {/* Flat top-level fields */}
-          {renderFields("main", inspection)}
-        </ul>
+        {/* 🍯 Resources & Health */}
+        {renderFields(
+          inspection,
+          ["honey_stores", "pollen_stores", "feeding_required", "supering_needed", "feeding_type", "disease_check"],
+          "🍯",
+          "Resources & Health"
+        )}
       </div>
     );
   };
+  
   
   
   
