@@ -497,7 +497,13 @@ function App() {
               </div>
             );
           } catch (err) {
-            console.error("
+            console.error("❌ Error parsing completed_actions:", err);
+            return null;
+          }
+        })()}
+      </div>
+    );
+  };
   
   
   
