@@ -15,8 +15,9 @@ export default async function handler(req, res) {
         queen_status(*),
         brood_presence(*),
         colony_strength(*)
-      `);
-    
+      `)
+      .order('created_at', { ascending: false }); // 👈 ensure newest inspections come first
+
 
       if (error) {
         console.error('Error fetching hive inspections:', error);

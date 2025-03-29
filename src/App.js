@@ -149,8 +149,9 @@ function App() {
       setInspections(res.data);
   
       const latest = res.data
-        .filter((i) => i.hive_id === hiveId)
-        .sort((a, b) => new Date(b.inspection_date) - new Date(a.inspection_date))[0];
+  .filter((i) => i.hive_id === hive.id)
+  .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))[0];
+
   
       setLatestInspection(latest || null);
     } catch (err) {
@@ -360,8 +361,9 @@ function App() {
       setInspections(res.data);
 
       const latest = res.data
-        .filter((i) => i.hive_id === hive.id)
-        .sort((a, b) => new Date(b.inspection_date) - new Date(a.inspection_date))[0];
+  .filter((i) => i.hive_id === hive.id)
+  .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))[0];
+
       setLatestInspection(latest || null);
     } catch (err) {
       console.error('❌ Error fetching inspections for hive:', err);
@@ -468,6 +470,8 @@ function App() {
         <h3 className="text-lg font-semibold text-gray-800 mb-2">
           Latest Inspection for Hive {inspection.hive_id}
         </h3>
+        <pre className="text-xs text-gray-500 overflow-x-auto">{JSON.stringify(inspection, null, 2)}</pre>
+
         <ul className="list-disc ml-5 text-gray-700 space-y-1">
   {renderFields('main', inspection)}
   {Array.isArray(inspection.queen_status) && inspection.queen_status[0] && renderFields('queen', inspection.queen_status[0])}
